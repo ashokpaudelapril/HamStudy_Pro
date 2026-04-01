@@ -56,6 +56,7 @@ export function SettingsScreen({ onBackToModes }: SettingsScreenProps) {
   const [lastReset, setLastReset] = useState<ResetAppDataResult | null>(null)
   const [lastResetMessage, setLastResetMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [saveMessage, setSaveMessage] = useState<string | null>(null)
   const [testResult, setTestResult] = useState<string | null>(null)
   const [apiKeyStatus, setApiKeyStatus] = useState<ApiKeyStatus[]>([])
   const [apiKeyInputs, setApiKeyInputs] = useState<Record<AiProvider, string>>({
@@ -88,6 +89,7 @@ export function SettingsScreen({ onBackToModes }: SettingsScreenProps) {
       if (window.confirm(`Are you sure you want to delete the ${provider} API key?`)) {
         await ipcBridge.deleteApiKey({ provider })
         await loadApiKeyStatus()
+        setSaveMessage(`${provider === 'anthropic' ? 'Anthropic' : 'OpenAI'} key removed.`)
       }
     },
     [loadApiKeyStatus],
@@ -145,11 +147,13 @@ export function SettingsScreen({ onBackToModes }: SettingsScreenProps) {
 
     setSaving(true)
     setError(null)
+    setSaveMessage(null)
     void ipcBridge
       .saveSettings(settings)
       .then((saved) => {
         setSettings(saved)
         applyVisualSettings(saved)
+        setSaveMessage('Settings saved.')
       })
       .catch((err: unknown) => {
         const details = err instanceof Error ? err.message : String(err)
@@ -166,6 +170,7 @@ export function SettingsScreen({ onBackToModes }: SettingsScreenProps) {
   function handleResetSettingsToDefault(): void {
     setSettings(DEFAULT_SETTINGS)
     applyVisualSettings(DEFAULT_SETTINGS)
+    setSaveMessage('Defaults loaded locally. Save to keep them.')
   }
 
   // TASK: Reset all user-generated app data from one settings action.
@@ -182,6 +187,7 @@ export function SettingsScreen({ onBackToModes }: SettingsScreenProps) {
     setResetting(true)
     setError(null)
     setLastResetMessage(null)
+    setSaveMessage(null)
     void ipcBridge
       .resetAppData()
       .then(async (result) => {
@@ -197,6 +203,7 @@ export function SettingsScreen({ onBackToModes }: SettingsScreenProps) {
         setLastResetMessage('Reset complete.')
         setSettings(DEFAULT_SETTINGS)
         applyVisualSettings(DEFAULT_SETTINGS)
+        setSaveMessage('Settings restored to defaults.')
       })
       .catch(async (err: unknown) => {
         const details = err instanceof Error ? err.message : String(err)
@@ -221,6 +228,7 @@ export function SettingsScreen({ onBackToModes }: SettingsScreenProps) {
             setLastResetMessage('Reset complete (compatibility mode). Restart app to load latest bridge methods.')
             setSettings(DEFAULT_SETTINGS)
             applyVisualSettings(DEFAULT_SETTINGS)
+            setSaveMessage('Settings restored to defaults.')
           } catch (compatErr: unknown) {
             const compatDetails = compatErr instanceof Error ? compatErr.message : String(compatErr)
             setError(`Failed to reset app data (compatibility mode). ${compatDetails}`)
@@ -271,6 +279,15 @@ export function SettingsScreen({ onBackToModes }: SettingsScreenProps) {
     applyVisualSettings(settings)
   }, [settings])
 
+  const hasUnsavedApiKeys = Object.values(apiKeyInputs).some((value) => value.trim().length > 0)
+  const configuredProviderCount = apiKeyStatus.filter((status) => status.isSet).length
+  const activeProviderLabel =
+    settings?.aiProvider === 'anthropic' ? 'Anthropic' : settings?.aiProvider === 'openai' ? 'OpenAI' : 'None'
+  const voiceSummary =
+    settings?.voiceId && voiceOptions.find((voice) => voice.id === settings.voiceId)
+      ? voiceOptions.find((voice) => voice.id === settings.voiceId)?.label ?? 'Custom voice'
+      : 'System default'
+
   // TASK: Restructure settings screen from a flat field dump into grouped, labelled sections.
   // HOW CODE SOLVES: Each logical group (Appearance, Study, Voice, AI) gets its own titled
   // block with a two-column label+control layout. Stat pills removed from header (they
@@ -290,9 +307,32 @@ export function SettingsScreen({ onBackToModes }: SettingsScreenProps) {
       <section className="panel">
         {loading ? <p>Loading settings…</p> : null}
         {error ? <p className="error-text">{error}</p> : null}
+        {saveMessage ? <p className="feedback-text">{saveMessage}</p> : null}
 
         {!loading && settings ? (
           <>
+            <section className="settings-overview">
+              <div className="settings-overview-card">
+                <span className="settings-overview-label">Appearance</span>
+                <strong>
+                  {settings.theme === 'system' ? 'System theme' : settings.theme === 'dark' ? 'Dark theme' : 'Light theme'}
+                </strong>
+                <p>
+                  {settings.visualTheme} style · {settings.textSize} text
+                </p>
+              </div>
+              <div className="settings-overview-card">
+                <span className="settings-overview-label">Study target</span>
+                <strong>{settings.dailyGoalMinutes} min/day</strong>
+                <p>Current daily study goal</p>
+              </div>
+              <div className="settings-overview-card">
+                <span className="settings-overview-label">Read-aloud</span>
+                <strong>{voiceSummary}</strong>
+                <p>Playback rate {settings.voiceRate.toFixed(1)}x</p>
+              </div>
+            </section>
+
             <div className="settings-columns">
               {/* Left column — Appearance */}
               <div className="settings-group">
@@ -421,6 +461,23 @@ export function SettingsScreen({ onBackToModes }: SettingsScreenProps) {
           Optional — provide your own API key to unlock live AI features (Elmer tutor chat, adaptive study plans).
           Keys are stored in the macOS Keychain and never leave your machine.
         </p>
+        <section className="settings-ai-summary">
+          <div className="settings-ai-summary-card">
+            <span className="settings-overview-label">Active provider</span>
+            <strong>{activeProviderLabel}</strong>
+            <p>{settings?.aiProvider ? 'Used for live AI features when a key is available' : 'No provider selected yet'}</p>
+          </div>
+          <div className="settings-ai-summary-card">
+            <span className="settings-overview-label">Stored keys</span>
+            <strong>{configuredProviderCount}</strong>
+            <p>{configuredProviderCount === 0 ? 'No saved keys yet' : 'Providers currently ready to use'}</p>
+          </div>
+          <div className="settings-ai-summary-card">
+            <span className="settings-overview-label">Pending changes</span>
+            <strong>{hasUnsavedApiKeys ? 'Yes' : 'No'}</strong>
+            <p>{hasUnsavedApiKeys ? 'There are API key inputs not saved yet' : 'No unsaved API key entries'}</p>
+          </div>
+        </section>
         <div className="settings-fields">
           <div className="settings-field">
             <label htmlFor="s-aiprovider">Active provider</label>
@@ -454,7 +511,19 @@ export function SettingsScreen({ onBackToModes }: SettingsScreenProps) {
                 </div>
                 <div className="api-key-actions">
                   <span className={`api-key-status ${status?.isSet ? 'is-set' : ''}`}>{status?.isSet ? 'Saved' : 'Not set'}</span>
-                  <button type="button" className="primary-button" onClick={() => handleSetApiKey(provider)} disabled={!apiKeyInputs[provider]}>
+                  <button
+                    type="button"
+                    className="primary-button"
+                    onClick={() => {
+                      void handleSetApiKey(provider).then(() => {
+                        setSaveMessage(`${provider === 'anthropic' ? 'Anthropic' : 'OpenAI'} key saved.`)
+                      }).catch((err: unknown) => {
+                        const details = err instanceof Error ? err.message : String(err)
+                        setError(`Failed to save ${provider} API key. ${details}`)
+                      })
+                    }}
+                    disabled={!apiKeyInputs[provider]}
+                  >
                     Save Key
                   </button>
                   <button type="button" className="ghost-btn" onClick={() => handleDeleteApiKey(provider)} disabled={!status?.isSet}>

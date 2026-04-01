@@ -42,6 +42,16 @@ export function QuestionBrowserScreen({ onBackToModes, onAskAboutQuestion, onExp
     return Array.from(set).sort((a, b) => a.localeCompare(b))
   }, [questionRows])
 
+  const activeFilterCount = useMemo(() => {
+    let count = 0
+    if (searchText.trim().length > 0) count += 1
+    if (activeSubElement !== 'all') count += 1
+    if (masteryFilter !== 'all') count += 1
+    if (starredOnly) count += 1
+    if (flaggedOnly) count += 1
+    return count
+  }, [activeSubElement, flaggedOnly, masteryFilter, searchText, starredOnly])
+
   function mapLegacyQuestionRow(question: Question): QuestionBrowserRow {
     return {
       id: question.id,
@@ -85,6 +95,17 @@ export function QuestionBrowserScreen({ onBackToModes, onAskAboutQuestion, onExp
     }
 
     return parsed.toLocaleString()
+  }
+
+  // TASK: Reset browser filters back to the default broad browsing state.
+  // HOW CODE SOLVES: Clears query, sub-element, mastery, and starred/flagged toggles
+  // so the next reload returns to the full selected-tier question list.
+  function handleClearFilters(): void {
+    setSearchText('')
+    setActiveSubElement('all')
+    setMasteryFilter('all')
+    setStarredOnly(false)
+    setFlaggedOnly(false)
   }
 
   // TASK: Load detail record when selected id changes.
@@ -344,15 +365,40 @@ export function QuestionBrowserScreen({ onBackToModes, onAskAboutQuestion, onExp
           <button type="submit" disabled={loading}>
             Apply Filters
           </button>
+
+          <button type="button" className="ghost-btn" onClick={handleClearFilters} disabled={loading || activeFilterCount === 0}>
+            Clear Filters
+          </button>
         </form>
       </section>
 
       <section className="panel browser-panel">
         <aside className="browser-list" aria-label="Question results list">
+          <div className="browser-list-header">
+            <div>
+              <strong>Results</strong>
+              <p className="meta">
+                {questionRows.length} question{questionRows.length === 1 ? '' : 's'} in {tier}
+                {activeFilterCount > 0 ? ` • ${activeFilterCount} active filter${activeFilterCount === 1 ? '' : 's'}` : ''}
+              </p>
+            </div>
+          </div>
+
           {loading ? <p>Loading browser results...</p> : null}
           {error ? <p className="error-text">{error}</p> : null}
+          {!enhancedBrowserAvailable ? (
+            <div className="browser-compat-note">
+              <strong>Compatibility mode</strong>
+              <p>Starred, flagged, mastery, and deeper browser metadata are partially limited until the latest bridge is loaded.</p>
+            </div>
+          ) : null}
 
-          {!loading && !error && questionRows.length === 0 ? <p>No questions match these filters.</p> : null}
+          {!loading && !error && questionRows.length === 0 ? (
+            <div className="browser-empty-state">
+              <h2>No questions match these filters</h2>
+              <p>Try clearing the search text or broadening the mastery and review-state filters.</p>
+            </div>
+          ) : null}
 
           {!loading && !error
             ? questionRows.map((row) => {
@@ -482,7 +528,12 @@ export function QuestionBrowserScreen({ onBackToModes, onAskAboutQuestion, onExp
             </div>
           ) : null}
 
-          {!detailLoading && !selectedQuestion ? <p>Select a question to inspect details.</p> : null}
+          {!detailLoading && !selectedQuestion ? (
+            <div className="browser-empty-state">
+              <h2>Select a question to inspect details</h2>
+              <p>The right panel will show the question text, answers, history, SRS state, and explanation support.</p>
+            </div>
+          ) : null}
         </article>
       </section>
     </main>

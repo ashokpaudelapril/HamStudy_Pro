@@ -29,6 +29,7 @@ export function QuestionScreen({ onBackToModes, onAskAboutQuestion, onExplainDif
   const [saving, setSaving] = useState(false)
   const [tier, setTier] = useState<ExamTier>('technician')
   const [searchText, setSearchText] = useState('')
+  const [appliedSearchText, setAppliedSearchText] = useState('')
   const [questionIds, setQuestionIds] = useState<string[]>([])
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null)
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -49,6 +50,7 @@ export function QuestionScreen({ onBackToModes, onAskAboutQuestion, onExplainDif
   const { recordReview, resetLocalCards } = useSRS()
 
   const hasQuestion = Boolean(currentQuestion)
+  const queueProgressPct = questionIds.length > 0 ? Math.round(((currentIndex + 1) / questionIds.length) * 100) : 0
 
   function formatTierLabel(value: ExamTier): string {
     if (value === 'technician') return 'Technician'
@@ -114,6 +116,7 @@ export function QuestionScreen({ onBackToModes, onAskAboutQuestion, onExplainDif
   const runSearch = useCallback(async (query: string, activeTier: ExamTier = tier): Promise<void> => {
     setLoading(true)
     setIsDueQueueMode(false)
+    setAppliedSearchText(query)
     const rows = await ipcBridge.searchQuestions({
       query,
       tier: activeTier,
@@ -567,6 +570,51 @@ export function QuestionScreen({ onBackToModes, onAskAboutQuestion, onExplainDif
         <p className="meta">Keyboard tip: A/B/C/D select answers, Enter submits, Cmd/Ctrl+R reads aloud, N goes next, and ? opens shortcuts.</p>
       </section>
 
+      <section className="panel question-session-overview">
+        <div className="question-session-overview-row">
+          <div className="question-session-card">
+            <span className="question-session-label">Mode</span>
+            <strong>{isDueQueueMode ? 'Due Queue' : 'Quick Practice'}</strong>
+            <p>
+              {isDueQueueMode
+                ? 'Focus only on cards the spaced-repetition system says need attention today.'
+                : 'Practice from the selected tier with search support and randomized default order.'}
+            </p>
+          </div>
+          <div className="question-session-card">
+            <span className="question-session-label">Active queue</span>
+            <strong>{questionIds.length}</strong>
+            <p>{questionIds.length === 1 ? '1 question loaded' : 'Questions loaded in this session pool'}</p>
+          </div>
+          <div className="question-session-card">
+            <span className="question-session-label">Search filter</span>
+            <strong>{appliedSearchText.length > 0 ? appliedSearchText : 'None'}</strong>
+            <p>{formatTierLabel(tier)} tier</p>
+          </div>
+        </div>
+        {hasQuestion ? (
+          <div className="question-session-progress" aria-label="Question session progress">
+            <div className="question-session-progress-copy">
+              <strong>
+                Question {currentIndex + 1} of {questionIds.length}
+              </strong>
+              <span>{queueProgressPct}% through active queue</span>
+            </div>
+            <div
+              className="question-session-progress-bar"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={queueProgressPct}
+            >
+              <span style={{ width: `${queueProgressPct}%` }} />
+            </div>
+          </div>
+        ) : (
+          <p className="meta">Run a search or reset filters to build a fresh question queue.</p>
+        )}
+      </section>
+
       <section className="panel quiz-summary-panel">
         <h2>Session Summary</h2>
         <p className="meta">Reset Session clears only this session summary. All-time stats stay persisted.</p>
@@ -627,7 +675,30 @@ export function QuestionScreen({ onBackToModes, onAskAboutQuestion, onExplainDif
           </div>
         ) : null}
 
-        {!loading && !error && !hasQuestion ? <p>No questions found for this search.</p> : null}
+        {!loading && !error && !hasQuestion ? (
+          <section className="flashcard-empty-state">
+            <h2>No questions match this search</h2>
+            <p>
+              Try a broader query, switch tiers, or clear the current search to rebuild the practice queue.
+            </p>
+            <div className="action-row">
+              <button
+                type="button"
+                className="ghost-btn"
+                onClick={() => {
+                  setSearchText('')
+                  void runSearch('').catch((err: unknown) => {
+                    const details = err instanceof Error ? err.message : String(err)
+                    setError(`Failed to reload questions. ${details}`)
+                    setLoading(false)
+                  })
+                }}
+              >
+                Reset Search
+              </button>
+            </div>
+          </section>
+        ) : null}
       </section>
 
       {showShortcuts ? (

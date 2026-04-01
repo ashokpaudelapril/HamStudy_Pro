@@ -41,6 +41,10 @@ export function FlashcardScreen({ onBackToModes, onAskAboutQuestion, onExplainDi
   const hasQuestion = Boolean(currentQuestion)
   const isInitialLoad = loading && !hasQuestion
   const isRefreshingDeck = loading && hasQuestion
+  const progressPct = deckQuestions.length > 0 ? Math.round(((currentIndex + 1) / deckQuestions.length) * 100) : 0
+  const hasActiveFilters = selectedSubElements.length > 0 || appliedSearchText.length > 0
+  const deckFocusSummary = selectedSubElements.length > 0 ? selectedSubElements.join(', ') : 'All sub-elements'
+  const searchSummary = appliedSearchText.length > 0 ? appliedSearchText : 'None'
 
   function formatTierLabel(value: ExamTier): string {
     if (value === 'technician') return 'Technician'
@@ -450,6 +454,45 @@ export function FlashcardScreen({ onBackToModes, onAskAboutQuestion, onExplainDi
             ? `Custom deck filter: ${selectedSubElements.join(', ')}`
             : 'No sub-element filter selected: deck includes the full tier pool.'}
         </p>
+        <section className="flashcard-session-summary">
+          <div className="flashcard-summary-row">
+            <div className="flashcard-summary-card">
+              <span className="flashcard-summary-label">Deck size</span>
+              <strong>{deckQuestions.length}</strong>
+              <p>{hasActiveFilters ? 'Filtered study deck' : 'Full tier practice deck'}</p>
+            </div>
+            <div className="flashcard-summary-card">
+              <span className="flashcard-summary-label">Deck order</span>
+              <strong>{randomizeDeck ? 'Randomized' : 'Sequential'}</strong>
+              <p>{randomizeDeck ? 'Good for recall practice' : 'Good for methodical review'}</p>
+            </div>
+            <div className="flashcard-summary-card">
+              <span className="flashcard-summary-label">Search</span>
+              <strong>{searchSummary}</strong>
+              <p>Active tier: {formatTierLabel(tier)}</p>
+            </div>
+          </div>
+          <p className="meta">Deck focus: {deckFocusSummary}</p>
+          {hasQuestion ? (
+            <div className="flashcard-progress-block" aria-label="Flashcard session progress">
+              <div className="flashcard-progress-copy">
+                <strong>
+                  Card {currentIndex + 1} of {deckQuestions.length}
+                </strong>
+                <span>{progressPct}% through deck</span>
+              </div>
+              <div
+                className="flashcard-progress-bar"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={progressPct}
+              >
+                <span style={{ width: `${progressPct}%` }} />
+              </div>
+            </div>
+          ) : null}
+        </section>
         <div className="action-row">
           <button
             type="button"
@@ -482,6 +525,7 @@ export function FlashcardScreen({ onBackToModes, onAskAboutQuestion, onExplainDi
           ) : null}
         </div>
         {voiceStatus ? <p className="meta">Voice: {voiceStatus}</p> : null}
+        <p className="meta">Tip: use Cmd/Ctrl + R to read the current flashcard aloud.</p>
       </section>
 
       <section className="panel question-panel">
@@ -540,7 +584,28 @@ export function FlashcardScreen({ onBackToModes, onAskAboutQuestion, onExplainDi
           </>
         ) : null}
 
-        {!loading && !error && !hasQuestion ? <p>No flashcards found for this search.</p> : null}
+        {!loading && !error && !hasQuestion ? (
+          <section className="flashcard-empty-state">
+            <h2>No flashcards match this deck setup</h2>
+            <p>
+              Try clearing the search, removing some sub-element filters, or switching to a different tier to rebuild the deck.
+            </p>
+            <div className="action-row">
+              <button
+                type="button"
+                className="ghost-btn"
+                onClick={() => {
+                  setSearchText('')
+                  setAppliedSearchText('')
+                  setSelectedSubElements([])
+                  refreshDeckWithOptions({ query: '', subElements: [] })
+                }}
+              >
+                Reset Deck Filters
+              </button>
+            </div>
+          </section>
+        ) : null}
       </section>
     </main>
   )

@@ -157,6 +157,22 @@ export function DashboardScreen({ onBackToModes, onStartDailyChallenge }: Dashbo
   const lastChallengeEvent = dailyChallengeEvents[0] ?? null
   const trendDirection =
     latestTrendPoint && previousTrendPoint ? latestTrendPoint.totalXp - previousTrendPoint.totalXp : 0
+  const dailyChallengeProgressPct = Math.round((dailyChallenge.completedToday / dailyChallenge.targetQuestions) * 100)
+  const focusDueCount =
+    dailyChallenge.focusTier === 'technician'
+      ? dueByTier.technician
+      : dailyChallenge.focusTier === 'general'
+        ? dueByTier.general
+        : dueByTier.extra
+  const nextFocusMessage =
+    totalDueToday > 0
+      ? `Start with ${formatTierName(dailyChallenge.focusTier)}. That tier has the biggest due queue right now.`
+      : readinessLead
+        ? `Push your strongest momentum in ${formatTierName(readinessLead.tier)} while your due queue is clear.`
+        : 'Start any practice session to establish a baseline and build momentum.'
+  const readinessSupportCopy = readinessLead
+    ? `${formatTierName(readinessLead.tier)} is leading at ${readinessLead.score}% readiness with ${readinessLead.confidencePct}% confidence.`
+    : 'No readiness signal yet. A few sessions will unlock smarter guidance.'
 
   // TASK: Refresh dashboard metrics from persisted IPC-backed data.
   // HOW CODE SOLVES: Fetches progress stats and due counts in parallel across
@@ -267,6 +283,38 @@ export function DashboardScreen({ onBackToModes, onStartDailyChallenge }: Dashbo
         <p className="meta">{streakTrendLabel}</p>
       </section>
 
+      <section className="panel dashboard-focus-panel">
+        <div className="dashboard-focus-header">
+          <div>
+            <p className="dashboard-label">Next Best Step</p>
+            <h2>{nextFocusMessage}</h2>
+          </div>
+          <div className="dashboard-focus-pill">
+            <span>Focus tier</span>
+            <strong>{formatTierName(dailyChallenge.focusTier)}</strong>
+          </div>
+        </div>
+        <div className="dashboard-focus-grid">
+          <article className="dashboard-focus-card">
+            <span className="dashboard-focus-label">Due now</span>
+            <strong>{focusDueCount}</strong>
+            <p>{formatTierName(dailyChallenge.focusTier)} cards ready for review today</p>
+          </article>
+          <article className="dashboard-focus-card">
+            <span className="dashboard-focus-label">Challenge progress</span>
+            <strong>
+              {dailyChallenge.completedToday}/{dailyChallenge.targetQuestions}
+            </strong>
+            <p>{dailyChallenge.isComplete ? 'Today’s goal is complete' : `${dailyChallenge.remaining} answers left for the daily target`}</p>
+          </article>
+          <article className="dashboard-focus-card">
+            <span className="dashboard-focus-label">Readiness signal</span>
+            <strong>{readinessPct}%</strong>
+            <p>{readinessSupportCopy}</p>
+          </article>
+        </div>
+      </section>
+
       <section className="panel dashboard-grid">
         <article className="dashboard-card">
           <p className="dashboard-label">Technician Due</p>
@@ -365,6 +413,23 @@ export function DashboardScreen({ onBackToModes, onStartDailyChallenge }: Dashbo
             ? `bonus unlocked (+${progressionSummary.dailyChallengeXpBonus} XP)`
             : `${progressionSummary?.dailyChallengeRemaining ?? dailyChallenge.remaining} to go for +50 XP`}
         </p>
+        <div className="dashboard-challenge-progress" aria-label="Daily challenge progress">
+          <div className="dashboard-challenge-progress-copy">
+            <strong>{dailyChallengeProgressPct}% complete</strong>
+            <span>
+              {dailyChallenge.completedToday} answered today in {formatTierName(dailyChallenge.focusTier)}
+            </span>
+          </div>
+          <div
+            className="dashboard-challenge-progress-bar"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={dailyChallengeProgressPct}
+          >
+            <span style={{ width: `${dailyChallengeProgressPct}%` }} />
+          </div>
+        </div>
         {lastChallengeEvent ? (
           <p className="meta">
             Last completed challenge: {new Date(lastChallengeEvent.completedAt).toLocaleDateString()} · +{lastChallengeEvent.bonusXp} XP · streak at
