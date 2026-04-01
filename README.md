@@ -1,64 +1,84 @@
-# HamStudy Pro (Implementation Workspace)
+# HamStudy Pro
 
-This directory contains the executable app scaffold for HamStudy Pro.
+HamStudy Pro is an offline-first Electron + React + TypeScript desktop app for FCC amateur radio exam preparation. It is designed to help learners move from question familiarity to real exam readiness with practice modes, progress tracking, reference material, and optional AI-assisted study tools.
 
-HamStudy Pro is an Electron + React + TypeScript macOS desktop application for FCC amateur radio exam prep, designed to be offline-first with optional live AI features.
+## What The App Includes
 
-## Current Status
+- Quiz, flashcard, speed round, weak-area drill, custom quiz, and full exam simulator modes
+- Dashboard and analytics views for readiness, streaks, due reviews, and study activity
+- Mastery map and question browser for inspecting the full FCC question pool
+- Offline reference sheets and hint/explanation support
+- Achievements, XP progression, and daily challenge tracking
+- Optional AI tutor and mnemonic tooling when a provider is configured
 
-Phase 1 foundation is in progress:
+## Current Project Status
 
-- Project scaffold created
-- Core dependencies installed
-- Architecture folders created
-- Shared types/constants/IPC bridge stubs added
-- FCC question bank copied into `data/`
+The app is now well past bare scaffolding. The current workspace includes:
+
+- Electron main, preload, renderer, and shared typed IPC structure
+- Local SQLite-backed progress and question data flow
+- FCC question pools in `data/`
+- Generated first-pass hint datasets in `data/hints/`
+- Polished home and achievements screens
 - TypeScript typecheck passing
-- Startup blocker currently open (see `../DOCS/BUGS.md`, BUG-01)
 
 ## Run Commands
 
 From this directory:
 
-- Install: `npm install`
-- Dev: `npm run dev`
+- Install dependencies: `npm install`
+- Start dev app: `npm run dev`
 - Typecheck: `npm run typecheck`
-- Build: `npm run build`
+- Build production bundle: `npm run build`
+- Run tests: `npm run test`
 - Lint: `npm run lint`
+- Generate API-backed hints: `npm run generate-hints`
+- Generate local fallback hints: `npm run generate-hints:local`
 
 ## Directory Map
 
 ```text
 hamstudy-pro/
-├── data/                    # FCC question pools (technician/general/extra)
-├── scripts/                 # Utility scripts (e.g., explanation generation later)
+├── data/
+│   ├── technician.json       # FCC Technician question pool
+│   ├── general.json          # FCC General question pool
+│   ├── extra.json            # FCC Amateur Extra question pool
+│   └── hints/                # Hint / explanation / mnemonic datasets
+├── public/                   # Static assets
+├── scripts/                  # Utility scripts such as hint generation
 ├── src/
-│   ├── main/                # Electron main process (window, DB, IPC, AI calls)
-│   ├── preload/             # Secure context bridge
-│   ├── renderer/            # React app UI
-│   └── shared/              # Shared types/constants/IPC contracts
-├── electron.vite.config.ts
-├── tailwind.config.js
-└── package.json
+│   ├── main/                 # Electron main process, DB, IPC handlers
+│   ├── preload/              # Secure context bridge exposed to renderer
+│   ├── renderer/             # React screens, components, styling, state
+│   └── shared/               # Shared types, constants, and IPC contracts
+├── electron.vite.config.ts   # Electron + Vite config
+├── vite.config.ts            # Renderer Vite config
+├── vitest.config.ts          # Test config
+└── package.json              # Scripts and dependencies
 ```
 
-## Key Rules
+## Architecture Notes
 
-- Keep DB access centralized in `src/main/db/queries.ts` (once implemented)
-- Keep API key handling in Main process + Keychain only
-- Use typed IPC wrappers in `src/shared/ipcBridge.ts`
-- Keep renderer free of direct Node or secret access
+- Keep database reads and writes centralized in `src/main/db/queries.ts`
+- Keep secrets and API key handling in the main process only
+- Use typed IPC wrappers from `src/shared/ipcBridge.ts`
+- Keep renderer code free of direct Node access
+- Treat `data/` as source content that is safe to ship with the app
 
-## Next Engineering Step
+## Hints Workflow
 
-1. Resolve Electron startup blocker (`app.whenReady` undefined)
-2. Finish Week 1 verification (`npm run dev` launches window)
-3. Implement Week 2 DB seed + query layer + first IPC question fetch
+The project currently supports two hint-generation paths:
 
-## Project Docs
+- `npm run generate-hints`
+  Requires Anthropic access and uses the API-backed generator in `scripts/generate-hints.mjs`
+- `npm run generate-hints:local`
+  Uses the local deterministic generator in `scripts/generate-hints-local.mjs`
 
-- Master context: `../DOCS/CLAUDE.md`
-- Progress tracker: `../DOCS/PROGRESS.md`
-- Dev log: `../DOCS/DEVLOG.md`
-- Bug tracker: `../DOCS/BUGS.md`
-- Security policy: `../DOCS/SECURITY.md`
+The local generator is intended as a fallback baseline so hint files are never left empty.
+
+## Recommended Next Steps
+
+1. Continue polishing study-session UX, especially hint presentation and question review flow
+2. Improve authored quality of the generated hint datasets over time
+3. Add more renderer-side tests for key learner journeys
+4. Keep refining onboarding, dashboard guidance, and exam-readiness feedback
