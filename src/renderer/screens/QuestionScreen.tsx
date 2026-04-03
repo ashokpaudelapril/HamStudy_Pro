@@ -44,6 +44,8 @@ export function QuestionScreen({ onBackToModes, onAskAboutQuestion, onExplainDif
   const [error, setError] = useState<string | null>(null)
   const [voiceStatus, setVoiceStatus] = useState<string | null>(null)
   const [voiceBusy, setVoiceBusy] = useState(false)
+  const [authoringStatus, setAuthoringStatus] = useState<string | null>(null)
+  const [reloadingAuthoredContent, setReloadingAuthoredContent] = useState(false)
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [sessionId, setSessionId] = useState(() => `session-${Date.now()}`)
   const [hasAiProvider, setHasAiProvider] = useState(false)
@@ -251,6 +253,31 @@ export function QuestionScreen({ onBackToModes, onAskAboutQuestion, onExplainDif
     setError(null)
     void Promise.all([refreshStats(), refreshDueTodayCount()])
   }
+
+  // TASK: Re-apply local JSON-authored hint content without restarting the app.
+  // HOW CODE SOLVES: Invokes main-process reseed logic, then reloads the active question
+  //                  so the renderer immediately reflects updated hint/explanation fields.
+  const handleReloadAuthoredContent = useCallback((): void => {
+    setReloadingAuthoredContent(true)
+    setAuthoringStatus(null)
+    setError(null)
+
+    void ipcBridge
+      .reloadAuthoredContent()
+      .then(async () => {
+        if (currentQuestion) {
+          await loadQuestionById(currentQuestion.id)
+        }
+        setAuthoringStatus('Authored hint pack reloaded from local JSON. The current card has been refreshed.')
+      })
+      .catch((err: unknown) => {
+        const details = err instanceof Error ? err.message : String(err)
+        setError(`Failed to reload authored content. ${details}`)
+      })
+      .finally(() => {
+        setReloadingAuthoredContent(false)
+      })
+  }, [currentQuestion, loadQuestionById])
 
   // TASK: Move to the next question in the current result set.
   // HOW CODE SOLVES: Uses wrap-around index math and `get-by-id` detail loading.
@@ -481,6 +508,9 @@ export function QuestionScreen({ onBackToModes, onAskAboutQuestion, onExplainDif
   const sessionAccuracy = sessionSummary.attempted > 0 ? Number(((sessionSummary.correct / sessionSummary.attempted) * 100).toFixed(2)) : 0
   const averageSeconds =
     sessionSummary.attempted > 0 ? Number((sessionSummary.totalTimeMs / sessionSummary.attempted / 1000).toFixed(2)) : 0
+  const currentQuestionHasAuthoredPack = Boolean(
+    currentQuestion?.hint?.trim() && currentQuestion?.explanation?.trim() && currentQuestion?.mnemonic?.trim(),
+  )
 
   return (
     <main className="app-shell">
@@ -488,7 +518,7 @@ export function QuestionScreen({ onBackToModes, onAskAboutQuestion, onExplainDif
         <div>
           <h1>HamStudy Pro</h1>
           <p className="subtitle">
-            {isDueQueueMode ? `${formatTierLabel(tier)} SRS due-today session` : `${formatTierLabel(tier)} quick practice session`}
+            {isDueQueueMode ? `${formatTierLabel(tier)} Due Today` : `${formatTierLabel(tier)} Quick Practice`}
           </p>
         </div>
         {onBackToModes ? (
@@ -497,76 +527,99 @@ export function QuestionScreen({ onBackToModes, onAskAboutQuestion, onExplainDif
           </button>
         ) : null}
         <div className="stats-grid">
-          <StatPill label="All-time answers" value={stats?.totalAnswers ?? 0} />
-          <StatPill label="All-time correct" value={stats?.correctAnswers ?? 0} />
-          <StatPill label="All-time accuracy" value={`${stats?.accuracyPct ?? 0}%`} />
-          <StatPill label="SRS due today" value={dueTodayCount} />
+          <StatPill label="All-time answers" value={stats?.totalAnswers ?? 0} icon="📊" />
+          <StatPill label="All-time correct" value={stats?.correctAnswers ?? 0} icon="✅" />
+          <StatPill label="All-time accuracy" value={`${stats?.accuracyPct ?? 0}%`} icon="🎯" />
+          <StatPill label="SRS due today" value={dueTodayCount} icon="⏳" />
         </div>
       </header>
 
-      <section className="panel">
-        <form className="search-row" onSubmit={handleSearchSubmit}>
-          <label>
-            Tier
-            <select value={tier} onChange={(e) => handleTierChange(e.target.value as ExamTier)}>
-              <option value="technician">technician</option>
-              <option value="general">general</option>
-              <option value="extra">extra</option>
-            </select>
-          </label>
-          <input
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            placeholder="Search by question text, id, refs, or sub-element"
-          />
-          <button type="submit" disabled={loading || saving}>
-            Search
-          </button>
+      <section className="panel mode-config-panel">
+        <div className="mode-config-card">
+          <span className="mode-config-label">Tier</span>
+          <div className="exam-tier-buttons">
+            <button type="button" className={`exam-tier-btn ${tier === 'technician' ? 'active' : ''}`} onClick={() => handleTierChange('technician')}>
+              Technician
+            </button>
+            <button type="button" className={`exam-tier-btn ${tier === 'general' ? 'active' : ''}`} onClick={() => handleTierChange('general')}>
+              General
+            </button>
+            <button type="button" className={`exam-tier-btn ${tier === 'extra' ? 'active' : ''}`} onClick={() => handleTierChange('extra')}>
+              Extra
+            </button>
+          </div>
+        </div>
+
+        <form className="mode-search-form" onSubmit={handleSearchSubmit}>
+          <span className="mode-config-label">Search</span>
+          <div className="mode-search-row">
+            <input
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              placeholder="Search by question, ID, reference, or topic"
+            />
+            <button type="submit" disabled={loading || saving}>
+              Search
+            </button>
+          </div>
         </form>
 
-        <div className="session-controls-row">
-          <button type="button" className="ghost-btn" onClick={handleResetSession} disabled={saving}>
-            Reset Session
-          </button>
-
-          <button
-            type="button"
-            className="ghost-btn"
-            onClick={handleSpeakQuestion}
-            disabled={saving || loading || !currentQuestion || voiceBusy}
-          >
-            Read Question
-          </button>
-
-          <button
-            type="button"
-            className="ghost-btn"
-            onClick={() => currentQuestion && onAskAboutQuestion?.(currentQuestion)}
-            disabled={saving || loading || !currentQuestion}
-          >
-            Ask About This Question
-          </button>
-
-          <button type="button" className="ghost-btn" onClick={handleStopSpeaking} disabled={saving || voiceBusy}>
-            Stop Voice
-          </button>
-
-          <button
-            type="button"
-            className="ghost-btn"
-            onClick={handleStartDueQueue}
-            disabled={loading || saving || !isSrsBridgeAvailable}
-          >
-            Study Due Queue
-          </button>
-
-          {isDueQueueMode ? (
-            <button type="button" className="ghost-btn" onClick={handleExitDueQueue} disabled={loading || saving}>
-              Exit Due Queue
+        <div className="mode-config-card">
+          <span className="mode-config-label">Study Tools</span>
+          <div className="session-controls-row">
+            <button type="button" className="ghost-btn" onClick={handleResetSession} disabled={saving}>
+              Reset Session
             </button>
-          ) : null}
+
+            <button
+              type="button"
+              className="ghost-btn"
+              onClick={handleSpeakQuestion}
+              disabled={saving || loading || !currentQuestion || voiceBusy}
+            >
+              Read Aloud
+            </button>
+
+            <button
+              type="button"
+              className="ghost-btn"
+              onClick={() => currentQuestion && onAskAboutQuestion?.(currentQuestion)}
+              disabled={saving || loading || !currentQuestion}
+            >
+              Ask About This Question
+            </button>
+
+            <button type="button" className="ghost-btn" onClick={handleStopSpeaking} disabled={saving || voiceBusy}>
+              Stop Voice
+            </button>
+
+            <button
+              type="button"
+              className="ghost-btn"
+              onClick={handleStartDueQueue}
+              disabled={loading || saving || !isSrsBridgeAvailable}
+            >
+              Study Due Today
+            </button>
+
+            {isDueQueueMode ? (
+              <button type="button" className="ghost-btn" onClick={handleExitDueQueue} disabled={loading || saving}>
+                Exit Due Queue
+              </button>
+            ) : null}
+
+            <button
+              type="button"
+              className="ghost-btn"
+              onClick={handleReloadAuthoredContent}
+              disabled={loading || saving || reloadingAuthoredContent}
+            >
+              {reloadingAuthoredContent ? 'Reloading Authored Hints…' : 'Reload Authored Hints'}
+            </button>
+          </div>
         </div>
         {voiceStatus ? <p className="meta">Voice: {voiceStatus}</p> : null}
+        {authoringStatus ? <p className="meta validation-status-text">{authoringStatus}</p> : null}
         <p className="meta">Keyboard tip: A/B/C/D select answers, Enter submits, Cmd/Ctrl+R reads aloud, N goes next, and ? opens shortcuts.</p>
       </section>
 
@@ -613,6 +666,11 @@ export function QuestionScreen({ onBackToModes, onAskAboutQuestion, onExplainDif
         ) : (
           <p className="meta">Run a search or reset filters to build a fresh question queue.</p>
         )}
+        {hasQuestion && currentQuestion ? (
+          <p className="meta validation-status-text">
+            Current card authoring status: {currentQuestionHasAuthoredPack ? 'Authored hint pack loaded.' : 'Using fallback guidance for at least one panel field.'}
+          </p>
+        ) : null}
       </section>
 
       <section className="panel quiz-summary-panel">

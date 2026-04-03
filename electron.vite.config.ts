@@ -14,6 +14,9 @@ export default defineConfig({
     },
   },
   renderer: {
+    build: {
+      sourcemap: process.env.ANALYZE === 'true',
+    },
     resolve: {
       alias: {
         '@renderer': resolve('src/renderer'),

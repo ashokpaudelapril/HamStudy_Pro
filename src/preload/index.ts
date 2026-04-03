@@ -95,6 +95,13 @@ async function getCustomQuizQuestionPool(filter: CustomQuizPoolFilter): Promise<
   return ipcRenderer.invoke('questions:get-custom-quiz-pool', filter)
 }
 
+// TASK: IPC helper for `questions:reload-authored-content`.
+// HOW CODE SOLVES: Re-applies local JSON-authored hint/explanation content to the DB
+//                  while the app is running so renderer screens can validate updates immediately.
+async function reloadAuthoredContent(): Promise<{ ok: true }> {
+  return ipcRenderer.invoke('questions:reload-authored-content')
+}
+
 // TASK: IPC helper for `progress:save-answer`.
 // HOW CODE SOLVES: Persists answer events through main process and returns
 //                   the stored answer payload.
@@ -300,6 +307,7 @@ contextBridge.exposeInMainWorld('hamstudy', {
   updateQuestionReviewState,
   getWeakAreaQuestionPool,
   getCustomQuizQuestionPool,
+  reloadAuthoredContent,
   saveAnswer,
   getProgressStats,
   getTierProgressStats,

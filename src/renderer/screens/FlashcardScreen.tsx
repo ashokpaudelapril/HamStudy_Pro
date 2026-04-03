@@ -43,8 +43,19 @@ export function FlashcardScreen({ onBackToModes, onAskAboutQuestion, onExplainDi
   const isRefreshingDeck = loading && hasQuestion
   const progressPct = deckQuestions.length > 0 ? Math.round(((currentIndex + 1) / deckQuestions.length) * 100) : 0
   const hasActiveFilters = selectedSubElements.length > 0 || appliedSearchText.length > 0
-  const deckFocusSummary = selectedSubElements.length > 0 ? selectedSubElements.join(', ') : 'All sub-elements'
+  const deckFocusSummary = selectedSubElements.length > 0 ? selectedSubElements.join(', ') : 'All topics'
   const searchSummary = appliedSearchText.length > 0 ? appliedSearchText : 'None'
+
+  function getChoiceNote(question: Question, index: number): string {
+    if (index === question.correctIndex) {
+      return question.explanation?.trim() || 'This choice is correct because it fully matches the requirement stated in the prompt.'
+    }
+
+    return (
+      question.whyWrong?.[index]?.trim() ||
+      `"${question.answers[index]}" does not match the complete requirement in the prompt.`
+    )
+  }
 
   function formatTierLabel(value: ExamTier): string {
     if (value === 'technician') return 'Technician'
@@ -100,9 +111,11 @@ export function FlashcardScreen({ onBackToModes, onAskAboutQuestion, onExplainDi
   }, [])
 
   // TASK: Promote a flashcard into the active viewing state.
-  // HOW CODE SOLVES: Switches cards from the in-memory deck instantly without another IPC fetch.
-  const showQuestion = useCallback((question: Question): void => {
-    setCurrentQuestion(question)
+  // HOW CODE SOLVES: Reloads the selected card by stable ID so authored hint/explanation
+  //                  edits from the DB are reflected even if the deck pool was cached earlier.
+  const showQuestion = useCallback(async (question: Question): Promise<void> => {
+    const latestQuestion = await ipcBridge.getQuestionById(question.id)
+    setCurrentQuestion(latestQuestion ?? question)
     setRevealed(false)
     setQuestionStartedAt(Date.now())
   }, [])
@@ -160,7 +173,7 @@ export function FlashcardScreen({ onBackToModes, onAskAboutQuestion, onExplainDi
         return
       }
 
-      showQuestion(orderedQuestions[0])
+      await showQuestion(orderedQuestions[0])
 
       if (shouldShowLoadingState) {
         setLoading(false)
@@ -250,8 +263,18 @@ export function FlashcardScreen({ onBackToModes, onAskAboutQuestion, onExplainDi
     const nextIndex = (currentIndex + 1) % deckQuestions.length
     const nextQuestion = deckQuestions[nextIndex]
 
-    setCurrentIndex(nextIndex)
-    showQuestion(nextQuestion)
+    setLoading(true)
+    void showQuestion(nextQuestion)
+      .then(() => {
+        setCurrentIndex(nextIndex)
+      })
+      .catch((err: unknown) => {
+        const details = err instanceof Error ? err.message : String(err)
+        setError(`Failed to load next flashcard. ${details}`)
+      })
+      .finally(() => {
+        setLoading(false)
+      })
   }
 
   // TASK: Submit flashcard search input.
@@ -362,7 +385,7 @@ export function FlashcardScreen({ onBackToModes, onAskAboutQuestion, onExplainDi
       <header className="top-bar">
         <div>
           <h1>HamStudy Pro</h1>
-          <p className="subtitle">{formatTierLabel(tier)} flashcard mode</p>
+          <p className="subtitle">{formatTierLabel(tier)} Flashcards</p>
         </div>
         <button type="button" className="ghost-btn" onClick={onBackToModes}>
           Back to Modes
@@ -374,86 +397,104 @@ export function FlashcardScreen({ onBackToModes, onAskAboutQuestion, onExplainDi
         </div>
       </header>
 
-      <section className="panel">
-        <form className="search-row" onSubmit={handleSearchSubmit}>
-          <label>
-            Tier
-            <select value={tier} onChange={(e) => handleTierChange(e.target.value as ExamTier)}>
-              <option value="technician">technician</option>
-              <option value="general">general</option>
-              <option value="extra">extra</option>
-            </select>
-          </label>
-          <input
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            placeholder="Search flashcards by question text, id, refs, or sub-element"
-          />
-          <button type="submit" disabled={loading || saving}>
-            Search
-          </button>
-        </form>
-        <div className="custom-controls">
-          <label className="browser-toggle">
+      <section className="panel mode-config-panel">
+        <div className="mode-config-card">
+          <span className="mode-config-label">Tier</span>
+          <div className="exam-tier-buttons">
+            <button type="button" className={`exam-tier-btn ${tier === 'technician' ? 'active' : ''}`} onClick={() => handleTierChange('technician')}>
+              Technician
+            </button>
+            <button type="button" className={`exam-tier-btn ${tier === 'general' ? 'active' : ''}`} onClick={() => handleTierChange('general')}>
+              General
+            </button>
+            <button type="button" className={`exam-tier-btn ${tier === 'extra' ? 'active' : ''}`} onClick={() => handleTierChange('extra')}>
+              Extra
+            </button>
+          </div>
+        </div>
+
+        <form className="mode-search-form" onSubmit={handleSearchSubmit}>
+          <span className="mode-config-label">Search</span>
+          <div className="mode-search-row">
             <input
-              type="checkbox"
-              checked={randomizeDeck}
-              onChange={(event) => {
-                const nextRandomize = event.target.checked
-                setRandomizeDeck(nextRandomize)
-                refreshDeckWithOptions({ randomize: nextRandomize })
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              placeholder="Search flashcards by question, ID, reference, or topic"
+            />
+            <button type="submit" disabled={loading || saving}>
+              Search
+            </button>
+          </div>
+        </form>
+
+        <div className="mode-config-card">
+          <span className="mode-config-label">Study Tools</span>
+          <div className="custom-controls">
+            <label className="browser-toggle">
+              <input
+                type="checkbox"
+                checked={randomizeDeck}
+                onChange={(event) => {
+                  const nextRandomize = event.target.checked
+                  setRandomizeDeck(nextRandomize)
+                  refreshDeckWithOptions({ randomize: nextRandomize })
+                }}
+                disabled={loading}
+              />
+              Randomize deck order
+            </label>
+
+            <button
+              type="button"
+              className="ghost-btn"
+              onClick={() => {
+                setSelectedSubElements([])
+                refreshDeckWithOptions({ subElements: [] })
               }}
               disabled={loading}
-            />
-            Randomize deck order
-          </label>
+            >
+              Clear Topics
+            </button>
 
-          <button
-            type="button"
-            className="ghost-btn"
-            onClick={() => {
-              setSelectedSubElements([])
-              refreshDeckWithOptions({ subElements: [] })
-            }}
-            disabled={loading}
-          >
-            Clear Sub-Elements
-          </button>
+            <button
+              type="button"
+              className="ghost-btn"
+              onClick={() => {
+                const nextSelected = [...availableSubElements]
+                setSelectedSubElements(nextSelected)
+                refreshDeckWithOptions({ subElements: nextSelected })
+              }}
+              disabled={loading || availableSubElements.length === 0}
+            >
+              Select All
+            </button>
+          </div>
+        </div>
 
-          <button
-            type="button"
-            className="ghost-btn"
-            onClick={() => {
-              const nextSelected = [...availableSubElements]
-              setSelectedSubElements(nextSelected)
-              refreshDeckWithOptions({ subElements: nextSelected })
-            }}
-            disabled={loading || availableSubElements.length === 0}
-          >
-            Select All
-          </button>
+        <div className="mode-config-card">
+          <span className="mode-config-label">Topics</span>
+          <div className="custom-sub-elements">
+            {availableSubElements.map((subElement) => {
+              const selected = selectedSubElements.includes(subElement)
+              return (
+                <button
+                  key={subElement}
+                  type="button"
+                  className={`custom-chip${selected ? ' selected' : ''}`}
+                  onClick={() => handleToggleSubElement(subElement)}
+                  disabled={loading}
+                >
+                  {subElement}
+                </button>
+              )
+            })}
+          </div>
+          <p className="meta">
+            {selectedSubElements.length > 0
+              ? `Deck filter: ${selectedSubElements.join(', ')}`
+              : 'No topic filter selected: deck includes the full tier pool.'}
+          </p>
         </div>
-        <div className="custom-sub-elements">
-          {availableSubElements.map((subElement) => {
-            const selected = selectedSubElements.includes(subElement)
-            return (
-              <button
-                key={subElement}
-                type="button"
-                className={`custom-chip${selected ? ' selected' : ''}`}
-                onClick={() => handleToggleSubElement(subElement)}
-                disabled={loading}
-              >
-                {subElement}
-              </button>
-            )
-          })}
-        </div>
-        <p className="meta">
-          {selectedSubElements.length > 0
-            ? `Custom deck filter: ${selectedSubElements.join(', ')}`
-            : 'No sub-element filter selected: deck includes the full tier pool.'}
-        </p>
         <section className="flashcard-session-summary">
           <div className="flashcard-summary-row">
             <div className="flashcard-summary-card">
@@ -550,16 +591,33 @@ export function FlashcardScreen({ onBackToModes, onAskAboutQuestion, onExplainDi
                     <strong>{String.fromCharCode(65 + currentQuestion.correctIndex)}.</strong>{' '}
                     {currentQuestion.answers[currentQuestion.correctIndex]}
                   </p>
-                  <p className="meta">Reference: {currentQuestion.refs || 'No citation listed for this flashcard.'}</p>
+                  {currentQuestion.refs ? <p className="meta">Reference: {currentQuestion.refs}</p> : null}
                 </div>
               ) : (
                 <p className="meta">
-                  Tap reveal when you are ready to check your answer. The FCC reference will appear with the revealed card.
+                  Review all choices first, then tap reveal when you are ready to check the correct answer. The FCC reference will appear with the revealed card.
                 </p>
               )}
-            </article>
 
-            <HintPanel key={currentQuestion.id} question={currentQuestion} title="Flashcard Hint" />
+              <div className="flashcard-option-list" aria-label="All answer choices">
+                {currentQuestion.answers.map((answer, index) => {
+                  const isCorrect = index === currentQuestion.correctIndex
+                  return (
+                    <div
+                      key={`${currentQuestion.id}-flashcard-choice-${index}`}
+                      className={`flashcard-option-row${revealed && isCorrect ? ' is-correct' : ''}`}
+                    >
+                      <strong>{String.fromCharCode(65 + index)}.</strong>
+                      <div className="flashcard-option-copy">
+                        <span>{answer}</span>
+                        {revealed ? <p>{getChoiceNote(currentQuestion, index)}</p> : null}
+                      </div>
+                      {revealed ? <em>{isCorrect ? 'Correct answer' : 'Other option'}</em> : null}
+                    </div>
+                  )
+                })}
+              </div>
+            </article>
 
             <div className="action-row">
               {!revealed ? (
@@ -581,6 +639,8 @@ export function FlashcardScreen({ onBackToModes, onAskAboutQuestion, onExplainDi
                 Next Card
               </button>
             </div>
+
+            <HintPanel key={currentQuestion.id} question={currentQuestion} title="Flashcard Help" />
           </>
         ) : null}
 
@@ -588,7 +648,7 @@ export function FlashcardScreen({ onBackToModes, onAskAboutQuestion, onExplainDi
           <section className="flashcard-empty-state">
             <h2>No flashcards match this deck setup</h2>
             <p>
-              Try clearing the search, removing some sub-element filters, or switching to a different tier to rebuild the deck.
+              Try clearing the search, removing some topic filters, or switching to a different tier to rebuild the deck.
             </p>
             <div className="action-row">
               <button

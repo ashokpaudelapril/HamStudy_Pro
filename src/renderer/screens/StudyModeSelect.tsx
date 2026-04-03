@@ -35,6 +35,7 @@ type ModeCardProps = {
 // TASK: Render a single clickable mode card with icon, title, and description.
 // HOW CODE SOLVES: Wraps a button with home-specific layout classes; featured and
 //                  accented modifiers apply visual emphasis without extra state.
+//                  Includes aria-label for screen readers combining title + description.
 function ModeCard({ icon, title, description, onClick, featured, accented, animDelay }: ModeCardProps) {
   const cls = [
     'home-mode-card',
@@ -44,12 +45,15 @@ function ModeCard({ icon, title, description, onClick, featured, accented, animD
     .filter(Boolean)
     .join(' ')
 
+  const ariaLabel = `${title}. ${description}`
+
   return (
     <button
       type="button"
       className={cls}
       onClick={onClick}
       style={animDelay ? { animationDelay: `${animDelay}ms` } : undefined}
+      aria-label={ariaLabel}
     >
       <span className="home-mode-icon" aria-hidden="true">{icon}</span>
       <span className="home-mode-body">
@@ -200,7 +204,7 @@ export function StudyModeSelect({ onSelectMode }: StudyModeSelectProps) {
           <ModeCard
             icon="🎯"
             title="Weak Area Drill"
-            description="Questions ranked by your lowest-accuracy sub-elements — fix gaps fast."
+            description="Questions ranked by your lowest-accuracy topics so you can fix gaps fast."
             onClick={() => onSelectMode('weak-area')}
             accented
             animDelay={180}
@@ -208,7 +212,7 @@ export function StudyModeSelect({ onSelectMode }: StudyModeSelectProps) {
           <ModeCard
             icon="🔧"
             title="Custom Quiz"
-            description="Pick tier, sub-elements, and question count for a focused session."
+            description="Pick a tier, choose topics, and set question count for a focused session."
             onClick={() => onSelectMode('custom')}
             animDelay={240}
           />
@@ -221,7 +225,7 @@ export function StudyModeSelect({ onSelectMode }: StudyModeSelectProps) {
         <ModeCard
           icon="📋"
           title="Full Exam Simulator"
-          description="35 or 50 questions, 26-minute countdown, pass/fail scorecard with per-sub-element breakdown. The closest thing to the real FCC exam session."
+          description="35 or 50 questions, 26-minute countdown, and a pass/fail scorecard with per-topic breakdown. The closest thing to the real FCC exam session."
           onClick={() => onSelectMode('exam')}
           featured
           animDelay={0}
@@ -242,7 +246,7 @@ export function StudyModeSelect({ onSelectMode }: StudyModeSelectProps) {
           <ModeCard
             icon="📈"
             title="Analytics"
-            description="Score-over-time chart and per-sub-element performance breakdown."
+            description="Score-over-time charts and per-topic performance breakdowns."
             onClick={() => onSelectMode('analytics')}
             animDelay={60}
           />
@@ -256,7 +260,7 @@ export function StudyModeSelect({ onSelectMode }: StudyModeSelectProps) {
           <ModeCard
             icon="🔍"
             title="Question Browser"
-            description="Search, filter by tier and sub-element, and inspect any question in full detail."
+            description="Search, filter by tier and topic, and inspect any question in full detail."
             onClick={() => onSelectMode('browser')}
             animDelay={180}
           />

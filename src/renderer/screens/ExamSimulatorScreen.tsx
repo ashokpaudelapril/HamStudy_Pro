@@ -37,6 +37,12 @@ function getExamConfig(tier: ExamTier): { questionCount: number; durationSeconds
   return { questionCount: 35, durationSeconds: 26 * 60 }
 }
 
+function formatTierLabel(value: ExamTier): string {
+  if (value === 'technician') return 'Technician'
+  if (value === 'general') return 'General'
+  return 'Extra'
+}
+
 function formatCountdown(totalSeconds: number): string {
   const safeSeconds = Math.max(0, totalSeconds)
   const minutes = Math.floor(safeSeconds / 60)
@@ -510,7 +516,7 @@ export function ExamSimulatorScreen({
           Back to Modes
         </button>
         <div className="stats-grid">
-          <StatPill label="Tier" value={tier} />
+          <StatPill label="Tier" value={formatTierLabel(tier)} />
           <StatPill label="Questions" value={examConfig.questionCount} />
           <StatPill label="Timer" value={formatCountdown(remainingSeconds || examConfig.durationSeconds)} />
           <StatPill label="Score" value={phase === 'finished' ? `${scorePct}%` : 'Pending'} />
@@ -518,41 +524,66 @@ export function ExamSimulatorScreen({
       </header>
 
       {phase === 'config' ? (
-        <section className="panel exam-config-panel">
-          <p className="meta">Pick a license tier to start a timed exam simulation.</p>
-
-          <div className="exam-tier-buttons">
-            <button
-              type="button"
-              className={`exam-tier-btn${tier === 'technician' ? ' active' : ''}`}
-              onClick={() => setTier('technician')}
-              disabled={loading}
-            >
-              Technician
-            </button>
-            <button
-              type="button"
-              className={`exam-tier-btn${tier === 'general' ? ' active' : ''}`}
-              onClick={() => setTier('general')}
-              disabled={loading}
-            >
-              General
-            </button>
-            <button
-              type="button"
-              className={`exam-tier-btn${tier === 'extra' ? ' active' : ''}`}
-              onClick={() => setTier('extra')}
-              disabled={loading}
-            >
-              Extra
-            </button>
+        <section className="panel mode-config-panel exam-config-panel">
+          <div className="mode-config-card">
+            <span className="mode-config-label">Overview</span>
+            <p className="meta">Pick a license tier to start a timed exam simulation.</p>
           </div>
 
-          <div className="stats-grid">
-            <StatPill label="Question Count" value={examConfig.questionCount} />
-            <StatPill label="Time Limit" value={formatCountdown(examConfig.durationSeconds)} />
-            <StatPill label="Passing Score" value="74%" />
-            <StatPill label="Scoring" value="Unanswered count as missed" />
+          <div className="mode-config-card">
+            <span className="mode-config-label">Tier</span>
+            <div className="exam-tier-buttons">
+              <button
+                type="button"
+                className={`exam-tier-btn${tier === 'technician' ? ' active' : ''}`}
+                onClick={() => setTier('technician')}
+                disabled={loading}
+              >
+                Technician
+              </button>
+              <button
+                type="button"
+                className={`exam-tier-btn${tier === 'general' ? ' active' : ''}`}
+                onClick={() => setTier('general')}
+                disabled={loading}
+              >
+                General
+              </button>
+              <button
+                type="button"
+                className={`exam-tier-btn${tier === 'extra' ? ' active' : ''}`}
+                onClick={() => setTier('extra')}
+                disabled={loading}
+              >
+                Extra
+              </button>
+            </div>
+          </div>
+
+          <div className="mode-config-card">
+            <span className="mode-config-label">Exam Setup</span>
+            <div className="question-session-overview-row">
+              <div className="question-session-card">
+                <span className="question-session-label">Question Count</span>
+                <strong>{examConfig.questionCount}</strong>
+                <p>Standard FCC-style practice length for this tier.</p>
+              </div>
+              <div className="question-session-card">
+                <span className="question-session-label">Time Limit</span>
+                <strong>{formatCountdown(examConfig.durationSeconds)}</strong>
+                <p>Countdown starts as soon as the exam begins.</p>
+              </div>
+              <div className="question-session-card">
+                <span className="question-session-label">Passing Score</span>
+                <strong>74%</strong>
+                <p>Matches the usual amateur exam passing threshold.</p>
+              </div>
+              <div className="question-session-card">
+                <span className="question-session-label">Scoring</span>
+                <strong>Unanswered Missed</strong>
+                <p>Any question left blank counts as incorrect.</p>
+              </div>
+            </div>
           </div>
 
           <div className="action-row">

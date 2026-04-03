@@ -1,6 +1,7 @@
 import { ipcMain } from 'electron'
 import type { ExamTier, MasteryState, Question, QuestionBrowserDetail, QuestionBrowserRow } from '../../shared/types'
 import { getDb } from '../db/database'
+import { applyHintsIfPresent } from '../db/seed'
 import {
   getCustomQuizQuestionPool,
   getQuestionBrowserDetail,
@@ -28,6 +29,7 @@ type WeakAreaPoolFilter = { tier: ExamTier; limit?: number; recentAnswers?: numb
 type CustomQuizPoolFilter = { tier: ExamTier; subElements?: string[]; limit?: number }
 type UpdateQuestionReviewStateInput = { questionId: string; starred?: boolean; flagged?: boolean }
 type QuestionBrowserDetailFilter = { questionId: string; recentLimit?: number }
+type ReloadAuthoredContentResult = { ok: true }
 
 // TASK: Register IPC handlers for question pool retrieval.
 // HOW CODE SOLVES: Enables the renderer to request DB-backed question lists
@@ -41,6 +43,7 @@ export function registerQuestionsIpcHandlers(): void {
   ipcMain.handle('questions:update-review-state', handleUpdateQuestionReviewState)
   ipcMain.handle('questions:get-weak-area-pool', handleGetWeakAreaPool)
   ipcMain.handle('questions:get-custom-quiz-pool', handleGetCustomQuizPool)
+  ipcMain.handle('questions:reload-authored-content', handleReloadAuthoredContent)
 }
 
 // TASK: IPC handler for `questions:get-pool`.
@@ -140,3 +143,15 @@ async function handleGetCustomQuizPool(_evt: unknown, filter: CustomQuizPoolFilt
   }
 }
 
+// TASK: IPC handler for `questions:reload-authored-content`.
+// HOW CODE SOLVES: Re-applies authored hint/explanation/mnemonic JSON files to the
+//                  existing questions table so local content edits can be validated without restarting the app.
+async function handleReloadAuthoredContent(): Promise<ReloadAuthoredContentResult> {
+  try {
+    const db = getDb()
+    await applyHintsIfPresent(db)
+    return { ok: true }
+  } catch {
+    throw new Error('Failed to reload authored content.')
+  }
+}

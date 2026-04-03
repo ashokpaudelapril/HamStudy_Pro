@@ -247,8 +247,8 @@ export function DashboardScreen({ onBackToModes, onStartDailyChallenge }: Dashbo
           Back to Modes
         </button>
         <div className="stats-grid">
-          <StatPill label="Readiness" value={`${readinessPct}%`} />
-          <StatPill label="Due Today" value={totalDueToday} />
+          <StatPill label="Readiness" value={`${readinessPct}%`} icon="🧭" />
+          <StatPill label="Due Today" value={totalDueToday} icon="⏳" />
         </div>
         <div className="dashboard-progression-row">
           <StreakBadge
@@ -271,14 +271,15 @@ export function DashboardScreen({ onBackToModes, onStartDailyChallenge }: Dashbo
             : 'No due reviews right now. Keep momentum with a new practice session.'}
         </p>
         <div className="stats-grid">
-          <StatPill label="Daily XP" value={`+${dailyXpDelta}`} />
+          <StatPill label="Daily XP" value={`+${dailyXpDelta}`} icon="⚡" />
           <StatPill
             label="Trend"
             value={
               trendDirection > 0 ? 'Climbing' : trendDirection < 0 ? 'Cooling' : latestTrendPoint ? 'Steady' : 'Starting'
             }
+            icon="📈"
           />
-          <StatPill label="Today" value={`${progressionSummary?.todaysAccuracyPct ?? 0}% accuracy`} />
+          <StatPill label="Today" value={`${progressionSummary?.todaysAccuracyPct ?? 0}% accuracy`} icon="🧠" />
         </div>
         <p className="meta">{streakTrendLabel}</p>
       </section>

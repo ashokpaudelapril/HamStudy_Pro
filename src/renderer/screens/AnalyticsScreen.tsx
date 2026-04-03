@@ -387,7 +387,7 @@ export function AnalyticsScreen({ onBackToModes }: AnalyticsScreenProps) {
       </header>
 
       <section className="panel dashboard-hero-panel">
-        <p className="mode-tagline">Track trend lines, expose weak sub-elements, and calibrate exam readiness.</p>
+        <p className="mode-tagline">Track trend lines, expose weak topics, and calibrate exam readiness.</p>
         <p className="meta">
           {leadTier && weakestTier
             ? `Best current tier: ${formatTierName(leadTier.tier)} at ${leadTier.score}%. Biggest drag: ${formatTierName(weakestTier.tier)} at ${weakestTier.score}%.`
@@ -520,9 +520,9 @@ export function AnalyticsScreen({ onBackToModes }: AnalyticsScreenProps) {
         </article>
 
         <article className="analytics-card">
-          <p className="dashboard-label">Sub-element Radar (Most Attempted)</p>
+          <p className="dashboard-label">Topic Radar (Most Attempted)</p>
           {radarData.length === 0 ? (
-            <p className="meta">No sub-element history yet. Answer questions to map your performance profile.</p>
+            <p className="meta">No topic history yet. Answer questions to map your performance profile.</p>
           ) : (
             <div className="analytics-chart-wrap">
               <ResponsiveContainer width="100%" height="100%">
@@ -572,7 +572,7 @@ export function AnalyticsScreen({ onBackToModes }: AnalyticsScreenProps) {
 
       <section className="panel">
         <p className="dashboard-label">Accuracy Heatmap by Group</p>
-        <p className="meta">Grouped by sub-element and question group. Lower-accuracy cells surface first.</p>
+        <p className="meta">Grouped by topic and question group. Lower-accuracy cells surface first.</p>
 
         <div className="heatmap-legend">
           <span className="heatmap-dot heatmap-unseen">Unseen</span>

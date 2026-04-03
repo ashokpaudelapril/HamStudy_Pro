@@ -181,7 +181,7 @@ export function ExplanationPanel({
             </div>
           )}
           {!userMnemonic && (
-            <p className="meta">Tie the sub-element label to the concept first, then recall the exact answer wording.</p>
+            <p className="meta">Tie the topic label to the concept first, then recall the exact answer wording.</p>
           )}
         </article>
 

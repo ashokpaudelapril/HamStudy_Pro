@@ -122,6 +122,10 @@ export interface UpdateQuestionReviewStateInput {
   flagged?: boolean
 }
 
+export interface ReloadAuthoredContentResult {
+  ok: true
+}
+
 export interface ResetAppDataResult {
   clearedAnswers: number
   clearedSessions: number
@@ -146,6 +150,7 @@ declare global {
       updateQuestionReviewState: (input: UpdateQuestionReviewStateInput) => Promise<Question>
       getWeakAreaQuestionPool: (filter: WeakAreaPoolFilter) => Promise<Question[]>
       getCustomQuizQuestionPool: (filter: CustomQuizPoolFilter) => Promise<Question[]>
+      reloadAuthoredContent: () => Promise<ReloadAuthoredContentResult>
       saveAnswer: (payload: ProgressAnswerInput) => Promise<UserAnswer>
       getProgressStats: () => Promise<ProgressStats>
       getTierProgressStats: () => Promise<TierProgressStats[]>
@@ -295,6 +300,17 @@ async function getCustomQuizQuestionPoolImpl(filter: CustomQuizPoolFilter): Prom
     throw new Error('Custom quiz IPC bridge is not available. Restart the app to reload preload bridge changes.')
   }
   return hamstudyApi.getCustomQuizQuestionPool(filter)
+}
+
+// TASK: Renderer-side typed wrapper for `questions:reload-authored-content`.
+// HOW CODE SOLVES: Requests re-application of local authored hint packs so UI validation
+//                  can happen without restarting the Electron main process.
+async function reloadAuthoredContentImpl(): Promise<ReloadAuthoredContentResult> {
+  const hamstudyApi = await getHamstudyApiOrThrow()
+  if (!hamstudyApi.reloadAuthoredContent) {
+    throw new Error('Authored content reload IPC bridge is not available. Restart the app to reload preload bridge changes.')
+  }
+  return hamstudyApi.reloadAuthoredContent()
 }
 
 // TASK: Renderer-side typed wrapper for `progress:save-answer`.
@@ -604,6 +620,7 @@ export const ipcBridge = {
   updateQuestionReviewState: updateQuestionReviewStateImpl,
   getWeakAreaQuestionPool: getWeakAreaQuestionPoolImpl,
   getCustomQuizQuestionPool: getCustomQuizQuestionPoolImpl,
+  reloadAuthoredContent: reloadAuthoredContentImpl,
   saveAnswer: saveAnswerImpl,
   getProgressStats: getProgressStatsImpl,
   getTierProgressStats: getTierProgressStatsImpl,

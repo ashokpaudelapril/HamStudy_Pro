@@ -292,84 +292,96 @@ export function QuestionBrowserScreen({ onBackToModes, onAskAboutQuestion, onExp
           Back to Modes
         </button>
         <div className="stats-grid">
-          <StatPill label="Tier" value={tier} />
-          <StatPill label="Results" value={questionRows.length} />
-          <StatPill label="Sub-elements" value={availableSubElements.length} />
+          <StatPill label="Tier" value={tier} icon="🤖" />
+          <StatPill label="Results" value={questionRows.length} icon="🗂️" />
+          <StatPill label="Topics" value={availableSubElements.length} icon="🧩" />
         </div>
       </header>
 
-      <section className="panel">
-        <form className="search-row" onSubmit={handleFilterSubmit}>
-          <label>
-            Tier
-            <select value={tier} onChange={(e) => setTier(e.target.value as ExamTier)} disabled={loading}>
-              <option value="technician">technician</option>
-              <option value="general">general</option>
-              <option value="extra">extra</option>
-            </select>
-          </label>
+      <section className="panel mode-config-panel">
+        <div className="mode-config-card">
+          <span className="mode-config-label">Tier</span>
+          <div className="exam-tier-buttons">
+            <button type="button" className={`exam-tier-btn ${tier === 'technician' ? 'active' : ''}`} onClick={() => setTier('technician')} disabled={loading}>
+              Technician
+            </button>
+            <button type="button" className={`exam-tier-btn ${tier === 'general' ? 'active' : ''}`} onClick={() => setTier('general')} disabled={loading}>
+              General
+            </button>
+            <button type="button" className={`exam-tier-btn ${tier === 'extra' ? 'active' : ''}`} onClick={() => setTier('extra')} disabled={loading}>
+              Extra
+            </button>
+          </div>
+        </div>
 
-          <input
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            placeholder="Search by id, question text, refs, sub-element, group"
-          />
-
-          <label>
-            Sub-element
-            <select value={activeSubElement} onChange={(e) => setActiveSubElement(e.target.value)} disabled={loading}>
-              <option value="all">all</option>
-              {availableSubElements.map((subElement) => (
-                <option key={subElement} value={subElement}>
-                  {subElement}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label>
-            Mastery
-            <select
-              value={masteryFilter}
-              onChange={(e) => setMasteryFilter(e.target.value as MasteryState)}
-              disabled={loading || !enhancedBrowserAvailable}
-            >
-              <option value="all">all</option>
-              <option value="unseen">unseen</option>
-              <option value="learning">learning</option>
-              <option value="known">known</option>
-              <option value="mastered">mastered</option>
-            </select>
-          </label>
-
-          <label className="browser-toggle">
+        <form className="mode-search-form" onSubmit={handleFilterSubmit}>
+          <span className="mode-config-label">Search</span>
+          <div className="mode-search-row">
             <input
-              type="checkbox"
-              checked={starredOnly}
-              onChange={(e) => setStarredOnly(e.target.checked)}
-              disabled={loading || !enhancedBrowserAvailable}
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              placeholder="Search by ID, question text, reference, topic, or group"
             />
-            Starred only
-          </label>
-
-          <label className="browser-toggle">
-            <input
-              type="checkbox"
-              checked={flaggedOnly}
-              onChange={(e) => setFlaggedOnly(e.target.checked)}
-              disabled={loading || !enhancedBrowserAvailable}
-            />
-            Flagged only
-          </label>
-
-          <button type="submit" disabled={loading}>
-            Apply Filters
-          </button>
-
-          <button type="button" className="ghost-btn" onClick={handleClearFilters} disabled={loading || activeFilterCount === 0}>
-            Clear Filters
-          </button>
+            <button type="submit" disabled={loading}>
+              Apply Filters
+            </button>
+            <button type="button" className="ghost-btn" onClick={handleClearFilters} disabled={loading || activeFilterCount === 0}>
+              Clear Filters
+            </button>
+          </div>
         </form>
+
+        <div className="mode-config-card">
+          <span className="mode-config-label">Filters</span>
+          <div className="custom-controls">
+            <label>
+              Topic
+              <select value={activeSubElement} onChange={(e) => setActiveSubElement(e.target.value)} disabled={loading}>
+                <option value="all">All topics</option>
+                {availableSubElements.map((subElement) => (
+                  <option key={subElement} value={subElement}>
+                    {subElement}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              Progress
+              <select
+                value={masteryFilter}
+                onChange={(e) => setMasteryFilter(e.target.value as MasteryState)}
+                disabled={loading || !enhancedBrowserAvailable}
+              >
+                <option value="all">Any progress</option>
+                <option value="unseen">Unseen</option>
+                <option value="learning">Learning</option>
+                <option value="known">Known</option>
+                <option value="mastered">Mastered</option>
+              </select>
+            </label>
+
+            <label className="browser-toggle">
+              <input
+                type="checkbox"
+                checked={starredOnly}
+                onChange={(e) => setStarredOnly(e.target.checked)}
+                disabled={loading || !enhancedBrowserAvailable}
+              />
+              Starred
+            </label>
+
+            <label className="browser-toggle">
+              <input
+                type="checkbox"
+                checked={flaggedOnly}
+                onChange={(e) => setFlaggedOnly(e.target.checked)}
+                disabled={loading || !enhancedBrowserAvailable}
+              />
+              Flagged
+            </label>
+          </div>
+        </div>
       </section>
 
       <section className="panel browser-panel">
@@ -466,12 +478,6 @@ export function QuestionBrowserScreen({ onBackToModes, onAskAboutQuestion, onExp
 
               <h2>{selectedQuestion.questionText}</h2>
 
-              {selectedQuestion.hint ? <p className="meta">Hint: {selectedQuestion.hint}</p> : null}
-              {selectedQuestion.mnemonic ? <p className="meta">Mnemonic: {selectedQuestion.mnemonic}</p> : null}
-              {selectedQuestion.explanation ? <p className="meta">Explanation: {selectedQuestion.explanation}</p> : null}
-
-              <ExplanationPanel question={selectedQuestion} submitted={true} showWhenUnsubmitted hasAiProvider={hasAiProvider} />
-
               <div className="answers-grid">
                 {selectedQuestion.answers.map((answer, idx) => {
                   const isCorrect = idx === selectedQuestion.correctIndex
@@ -483,6 +489,12 @@ export function QuestionBrowserScreen({ onBackToModes, onAskAboutQuestion, onExp
                   )
                 })}
               </div>
+
+              {selectedQuestion.hint ? <p className="meta">Hint: {selectedQuestion.hint}</p> : null}
+              {selectedQuestion.mnemonic ? <p className="meta">Mnemonic: {selectedQuestion.mnemonic}</p> : null}
+              {selectedQuestion.explanation ? <p className="meta">Explanation: {selectedQuestion.explanation}</p> : null}
+
+              <ExplanationPanel question={selectedQuestion} submitted={true} showWhenUnsubmitted hasAiProvider={hasAiProvider} />
 
               <p className="meta">Reference: {selectedQuestion.refs}</p>
 

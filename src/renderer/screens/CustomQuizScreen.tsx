@@ -255,7 +255,7 @@ export function CustomQuizScreen({ onBackToModes, onAskAboutQuestion, onExplainD
       <header className="top-bar">
         <div>
           <h1>HamStudy Pro</h1>
-          <p className="subtitle">Custom Quiz Builder</p>
+          <p className="subtitle">Custom Quiz</p>
         </div>
         <div className="action-row">
           {phase === 'quiz' ? (
@@ -277,63 +277,75 @@ export function CustomQuizScreen({ onBackToModes, onAskAboutQuestion, onExplainD
 
       {phase === 'builder' ? (
         <section className="panel custom-builder-panel">
-          <div className="custom-controls">
-            <label>
-              Exam tier
-              <select value={tier} onChange={(e) => setTier(e.target.value as ExamTier)} disabled={loading}>
-                <option value="technician">technician</option>
-                <option value="general">general</option>
-                <option value="extra">extra</option>
-              </select>
-            </label>
-
-            <label>
-              Target questions
-              <input
-                type="number"
-                min={1}
-                max={100}
-                value={questionCount}
-                onChange={(e) => setQuestionCount(Number(e.target.value))}
-              />
-            </label>
-
-            <button type="button" className="ghost-btn" onClick={() => setSelectedSubElements([])} disabled={loading}>
-              Clear Sub-Elements
-            </button>
-
-            <button
-              type="button"
-              className="ghost-btn"
-              onClick={() => setSelectedSubElements([...availableSubElements])}
-              disabled={loading || availableSubElements.length === 0}
-            >
-              Select All
-            </button>
+          <div className="mode-config-card">
+            <span className="mode-config-label">Tier</span>
+            <div className="exam-tier-buttons">
+              <button type="button" className={`exam-tier-btn ${tier === 'technician' ? 'active' : ''}`} onClick={() => setTier('technician')} disabled={loading}>
+                Technician
+              </button>
+              <button type="button" className={`exam-tier-btn ${tier === 'general' ? 'active' : ''}`} onClick={() => setTier('general')} disabled={loading}>
+                General
+              </button>
+              <button type="button" className={`exam-tier-btn ${tier === 'extra' ? 'active' : ''}`} onClick={() => setTier('extra')} disabled={loading}>
+                Extra
+              </button>
+            </div>
           </div>
 
-          <div className="custom-sub-elements">
-            {availableSubElements.map((subElement) => {
-              const selected = selectedSubElements.includes(subElement)
-              return (
-                <button
-                  key={subElement}
-                  type="button"
-                  className={`custom-chip${selected ? ' selected' : ''}`}
-                  onClick={() => handleToggleSubElement(subElement)}
-                  disabled={loading}
-                >
-                  {subElement}
-                </button>
-              )
-            })}
+          <div className="mode-config-card">
+            <span className="mode-config-label">Study Setup</span>
+            <div className="custom-controls">
+              <label>
+                Target questions
+                <input
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={questionCount}
+                  onChange={(e) => setQuestionCount(Number(e.target.value))}
+                />
+              </label>
+
+              <button type="button" className="ghost-btn" onClick={() => setSelectedSubElements([])} disabled={loading}>
+                Clear Topics
+              </button>
+
+              <button
+                type="button"
+                className="ghost-btn"
+                onClick={() => setSelectedSubElements([...availableSubElements])}
+                disabled={loading || availableSubElements.length === 0}
+              >
+                Select All
+              </button>
+            </div>
           </div>
 
-          <p className="meta">
-            {selectedSubElements.length > 0
-              ? `Selected sub-elements: ${selectedSubElements.join(', ')}`
-              : 'No sub-element selected: quiz will pull from all sub-elements in this tier.'}
-          </p>
+          <div className="mode-config-card">
+            <span className="mode-config-label">Topics</span>
+            <div className="custom-sub-elements">
+              {availableSubElements.map((subElement) => {
+                const selected = selectedSubElements.includes(subElement)
+                return (
+                  <button
+                    key={subElement}
+                    type="button"
+                    className={`custom-chip${selected ? ' selected' : ''}`}
+                    onClick={() => handleToggleSubElement(subElement)}
+                    disabled={loading}
+                  >
+                    {subElement}
+                  </button>
+                )
+              })}
+            </div>
+
+            <p className="meta">
+              {selectedSubElements.length > 0
+                ? `Selected topics: ${selectedSubElements.join(', ')}`
+                : 'No topic selected: quiz will pull from all topics in this tier.'}
+            </p>
+          </div>
 
           <div className="action-row">
             <button type="button" className="primary-button" onClick={handleStartQuiz} disabled={loading || saving}>

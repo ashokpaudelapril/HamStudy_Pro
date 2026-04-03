@@ -286,24 +286,34 @@ export function SpeedRoundScreen({
         </div>
       </header>
 
-      <section className="panel speed-meta-panel">
-        <form className="search-row" onSubmit={handleSearchSubmit}>
-          <label>
-            Tier
-            <select value={tier} onChange={(e) => handleTierChange(e.target.value as ExamTier)}>
-              <option value="technician">technician</option>
-              <option value="general">general</option>
-              <option value="extra">extra</option>
-            </select>
-          </label>
-          <input
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            placeholder="Search speed-round questions by text, id, refs, or sub-element"
-          />
-          <button type="submit" disabled={loading || saving}>
-            Search
-          </button>
+      <section className="panel mode-config-panel">
+        <div className="mode-config-card">
+          <span className="mode-config-label">Tier</span>
+          <div className="exam-tier-buttons">
+            <button type="button" className={`exam-tier-btn ${tier === 'technician' ? 'active' : ''}`} onClick={() => handleTierChange('technician')}>
+              Technician
+            </button>
+            <button type="button" className={`exam-tier-btn ${tier === 'general' ? 'active' : ''}`} onClick={() => handleTierChange('general')}>
+              General
+            </button>
+            <button type="button" className={`exam-tier-btn ${tier === 'extra' ? 'active' : ''}`} onClick={() => handleTierChange('extra')}>
+              Extra
+            </button>
+          </div>
+        </div>
+
+        <form className="mode-search-form" onSubmit={handleSearchSubmit}>
+          <span className="mode-config-label">Search</span>
+          <div className="mode-search-row">
+            <input
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              placeholder="Search speed-round questions by question, ID, reference, or topic"
+            />
+            <button type="submit" disabled={loading || saving}>
+              Search
+            </button>
+          </div>
         </form>
 
         <div className="stats-grid speed-global-stats">
@@ -320,7 +330,7 @@ export function SpeedRoundScreen({
               onClick={() => onAskAboutQuestion?.(lastResolvedQuestion)}
               disabled={saving}
             >
-              Ask About Last Question
+              Ask About This Question
             </button>
             <button
               type="button"

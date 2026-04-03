@@ -27,7 +27,7 @@ function shuffleArray<T>(arr: T[]): T[] {
   return result
 }
 
-// TASK: Run a targeted weak-area drill using DB-ranked weak sub-elements.
+  // TASK: Run a targeted weak-area drill using DB-ranked weak topics.
 // HOW CODE SOLVES: Loads `questions:get-weak-area-pool`, persists answers,
 //                  and keeps both local drill metrics and global stats in sync.
 export function WeakAreaScreen({ onBackToModes, onAskAboutQuestion, onExplainDifferently }: WeakAreaScreenProps) {
@@ -197,7 +197,7 @@ export function WeakAreaScreen({ onBackToModes, onAskAboutQuestion, onExplainDif
       <header className="top-bar">
         <div>
           <h1>HamStudy Pro</h1>
-          <p className="subtitle">{formatTierLabel(tier)} Weak Area Drill</p>
+          <p className="subtitle">{formatTierLabel(tier)} Weak Areas</p>
         </div>
         <button type="button" className="ghost-btn" onClick={onBackToModes}>
           Back to Modes
@@ -210,8 +210,9 @@ export function WeakAreaScreen({ onBackToModes, onAskAboutQuestion, onExplainDif
         </div>
       </header>
 
-      <section className="panel weak-meta-panel">
-        <div>
+      <section className="panel mode-config-panel">
+        <div className="mode-config-card">
+          <span className="mode-config-label">Tier</span>
           <div className="exam-tier-buttons">
             <button type="button" className={`exam-tier-btn ${tier === 'technician' ? 'active' : ''}`} onClick={() => setTier('technician')}>
               Technician
@@ -223,23 +224,29 @@ export function WeakAreaScreen({ onBackToModes, onAskAboutQuestion, onExplainDif
               Extra
             </button>
           </div>
-          <p className="meta">Targeted sub-elements: {weakSubElements.join(', ') || 'loading...'}</p>
         </div>
-        <div className="action-row">
-          <button type="button" className="ghost-btn" onClick={handleResetDrill} disabled={saving}>
-            Reset Drill
-          </button>
-          <button type="button" className="ghost-btn" onClick={() => void loadWeakAreaPool()} disabled={loading || saving}>
-            Refresh Weak Pool
-          </button>
-          <button
-            type="button"
-            className="ghost-btn"
-            onClick={() => currentQuestion && onAskAboutQuestion?.(currentQuestion)}
-            disabled={loading || saving || !currentQuestion}
-          >
-            Ask About This Question
-          </button>
+        <div className="mode-config-card">
+          <span className="mode-config-label">Topics</span>
+          <p className="meta">Targeted topics: {weakSubElements.join(', ') || 'loading...'}</p>
+        </div>
+        <div className="mode-config-card">
+          <span className="mode-config-label">Study Tools</span>
+          <div className="custom-controls">
+            <button type="button" className="ghost-btn" onClick={handleResetDrill} disabled={saving}>
+              Reset Drill
+            </button>
+            <button type="button" className="ghost-btn" onClick={() => void loadWeakAreaPool()} disabled={loading || saving}>
+              Refresh Weak Topics
+            </button>
+            <button
+              type="button"
+              className="ghost-btn"
+              onClick={() => currentQuestion && onAskAboutQuestion?.(currentQuestion)}
+              disabled={loading || saving || !currentQuestion}
+            >
+              Ask About This Question
+            </button>
+          </div>
         </div>
       </section>
 
@@ -254,7 +261,7 @@ export function WeakAreaScreen({ onBackToModes, onAskAboutQuestion, onExplainDif
               Restart (reshuffle)
             </button>
             <button type="button" className="ghost-btn" onClick={() => void loadWeakAreaPool()} disabled={loading}>
-              Refresh Weak Pool
+              Refresh Weak Topics
             </button>
           </div>
         </section>

@@ -27,16 +27,28 @@ function buildFallbackHint(question: Question): string {
 function buildHintStages(question: Question): string[] {
   const fallbackHint = buildFallbackHint(question)
   const authoredHint = question.hint?.trim()
+  const authoredMnemonic = question.mnemonic?.trim()
+  const authoredExplanation = question.explanation?.trim()
   const referenceText = question.refs?.trim() || 'the cited concept source'
 
-  return [
-    `Start broad: anchor this question to ${question.subElement} and decide whether it is testing a rule, operating practice, math relationship, or equipment concept.`,
-    authoredHint && authoredHint.length > 0 ? authoredHint : fallbackHint,
-    `Final nudge: reread the stem and compare each answer against ${referenceText}. The best option will be the one that fully matches the question, not the one that is only partly true.`,
-  ]
+  const stages: string[] = [authoredHint && authoredHint.length > 0 ? authoredHint : fallbackHint]
+
+  if (authoredMnemonic && authoredMnemonic.length > 0) {
+    stages.push(`Memory hook: ${authoredMnemonic}`)
+  }
+
+  if (authoredExplanation && authoredExplanation.length > 0) {
+    stages.push(authoredExplanation)
+  } else {
+    stages.push(
+      `Final nudge: reread the stem and compare each answer against ${referenceText}. The best option will be the one that fully matches the question, not the one that is only partly true.`,
+    )
+  }
+
+  return stages
 }
 
-export function HintPanel({ question, title = 'Hint Panel' }: HintPanelProps) {
+export function HintPanel({ question, title = 'Question Help' }: HintPanelProps) {
   const [hintLevel, setHintLevel] = useState(0)
 
   const hintStages = useMemo(() => buildHintStages(question), [question])
@@ -45,11 +57,11 @@ export function HintPanel({ question, title = 'Hint Panel' }: HintPanelProps) {
   return (
     <section className="panel hint-panel" aria-label="Hint panel">
       <header className="hint-panel-header">
-        <div>
-          <p className="mode-eyebrow">Study Hint</p>
+        <div className="hint-panel-title-block">
+          <p className="mode-eyebrow">Hint</p>
           <h3>{title}</h3>
         </div>
-        <div className="action-row">
+        <div className="hint-panel-actions">
           {hintLevel > 0 ? (
             <button type="button" className="ghost-btn" onClick={() => setHintLevel(0)}>
               Hide Hints
