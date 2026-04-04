@@ -21,7 +21,7 @@ The app is now functionally complete for core study use. The current workspace i
 - Detailed authored hint datasets for Technician, General, and Extra in `data/hints/`
 - Figure image assets in `data/images/` for figure-based pool questions
 - Multiple study modes, dashboard/analytics, question browser, and reference sheets
-- TypeScript build and Playwright regression coverage passing
+- TypeScript build passing
 - Packaged macOS app build passing
 
 ## Run Commands
@@ -36,8 +36,6 @@ From this directory:
 - Build unpacked release directory: `npm run dist:dir`
 - Build macOS release artifacts: `npm run dist:mac`
 - Generate branded macOS icon assets: `npm run generate:icon`
-- Run tests: `npm run test`
-- Run browser regression suite: `npm run test:e2e`
 - Lint: `npm run lint`
 - Generate API-backed hints: `npm run generate-hints`
 - Generate local fallback hints: `npm run generate-hints:local`
@@ -53,6 +51,7 @@ Most recent local verification:
 Latest packaged app output:
 
 - `release/mac-arm64/HamStudy Pro.app`
+- `release/HamStudy Pro-<version>-arm64.dmg`
 
 ## Directory Map
 
@@ -71,9 +70,9 @@ hamstudy-pro/
 │   ├── preload/              # Secure context bridge exposed to renderer
 │   ├── renderer/             # React screens, components, styling, state
 │   └── shared/               # Shared types, constants, and IPC contracts
+├── build/                    # Stable app icon assets used for packaging
 ├── electron.vite.config.ts   # Electron + Vite config
 ├── vite.config.ts            # Renderer Vite config
-├── vitest.config.ts          # Test config
 └── package.json              # Scripts and dependencies
 ```
 
@@ -103,15 +102,15 @@ The local generator is intended as a fallback baseline so hint files are never l
 - Figure-based questions should show their matching images inside the study flow
 - The app stores progress locally, so testing on one machine will reuse that machine's local study state
 
-## Release Docs
+## GitHub Publishing
 
-- GitHub release workflow: `DOCS/GITHUB_RELEASE_GUIDE.md`
-- Repo/source layout notes: `DOCS/REPO_STRUCTURE_NOTES.md`
-- Manual tester checklist: `DOCS/FIRST_TESTER_CHECKLIST.md`
+- Keep the GitHub repo focused on source code only
+- Upload `.dmg` and optional `.zip` files through the GitHub Releases page
+- Do not commit `release/`, `out/`, or `node_modules/` into the repo
 
 ## Recommended Next Steps
 
 1. Add Developer ID signing and notarization for public macOS distribution
 2. Do a manual smoke pass on a packaged `dist:mac` build
-3. Write short release notes for first external testers
+3. Publish the `.dmg` on a GitHub Release page
 4. Continue improving hint quality and visual polish over time
