@@ -6,6 +6,10 @@ async function openModeFromHome(page: Parameters<typeof test>[0]['page'], label:
   await page.locator(`button:has-text("${label}")`).first().click()
 }
 
+async function answerFirstVisibleChoice(page: Parameters<typeof test>[0]['page']): Promise<void> {
+  await page.locator('[role="radio"]').first().click()
+}
+
 // TASK: Smoke test for basic app navigation and rendering.
 // HOW CODE SOLVES: Verifies that the main app window loads, displays the
 //                  study mode selector, and can navigate between modes.
@@ -240,6 +244,28 @@ test.describe('Navigation and deep linking', () => {
 })
 
 test.describe('Focused regression checks', () => {
+  test('quiz mode supports selecting and submitting an answer', async ({ page }) => {
+    await openModeFromHome(page, 'Quiz Mode')
+
+    await expect(page.locator('text=Back to Modes')).toBeVisible()
+    await expect(page.getByPlaceholder('Search by question, ID, reference, or topic')).toBeVisible()
+    await expect(page.locator('text=Loading questions...')).not.toBeVisible({ timeout: 10000 })
+
+    const noQuestions = page.getByRole('heading', { name: 'No questions match this search' })
+    const submitAnswer = page.getByRole('button', { name: 'Submit Answer' })
+
+    await expect(submitAnswer.or(noQuestions)).toBeVisible()
+
+    if (await noQuestions.isVisible()) {
+      return
+    }
+
+    await answerFirstVisibleChoice(page)
+    await submitAnswer.click()
+
+    await expect(page.locator('text=Correct. Great job.').or(page.locator('text=Incorrect. Correct answer:'))).toBeVisible()
+  })
+
   test('flashcard mode loads a usable study screen', async ({ page }) => {
     await openModeFromHome(page, 'Flashcard Mode')
 
@@ -253,12 +279,87 @@ test.describe('Focused regression checks', () => {
     await expect(revealAnswer.or(emptyState)).toBeVisible()
   })
 
+  test('weak area drill loads and can submit an answer when questions are available', async ({ page }) => {
+    await openModeFromHome(page, 'Weak Area Drill')
+
+    await expect(page.locator('text=Back to Modes')).toBeVisible()
+    await expect(page.locator('text=Study Tools')).toBeVisible()
+
+    const noWeakQuestions = page.locator('text=No weak-area questions available yet.')
+    const submitAnswer = page.getByRole('button', { name: 'Submit Answer' })
+
+    await expect(submitAnswer.or(noWeakQuestions)).toBeVisible()
+
+    if (await noWeakQuestions.isVisible()) {
+      return
+    }
+
+    await answerFirstVisibleChoice(page)
+    await submitAnswer.click()
+
+    await expect(
+      page.locator('text=Correct. You are improving in this weak area.').or(page.locator('text=Incorrect. Correct answer:')),
+    ).toBeVisible()
+  })
+
+  test('custom quiz can start from the builder and submit an answer', async ({ page }) => {
+    await openModeFromHome(page, 'Custom Quiz')
+
+    await expect(page.locator('text=Start Custom Quiz')).toBeVisible()
+    await expect(page.locator('.mode-config-label').filter({ hasText: 'Topics' })).toBeVisible()
+
+    await page.getByRole('button', { name: 'Start Custom Quiz' }).click()
+
+    await expect(page.getByRole('button', { name: 'Submit Answer' }).or(page.locator('text=No custom quiz questions available.'))).toBeVisible()
+
+    if (await page.locator('text=No custom quiz questions available.').isVisible()) {
+      return
+    }
+
+    await answerFirstVisibleChoice(page)
+    await page.getByRole('button', { name: 'Submit Answer' }).click()
+
+    await expect(
+      page.locator('text=Correct. Filtered practice is on track.').or(page.locator('text=Incorrect. Correct answer:')),
+    ).toBeVisible()
+  })
+
+  test('question browser loads results and supports star toggles', async ({ page }) => {
+    await openModeFromHome(page, 'Question Browser')
+
+    await expect(page.getByRole('button', { name: 'Apply Filters' })).toBeVisible()
+    await expect(page.locator('text=Loading browser results...')).not.toBeVisible({ timeout: 10000 })
+    await expect(page.locator('text=Loading question detail...')).not.toBeVisible({ timeout: 10000 })
+    await expect(page.locator('.browser-row').first()).toBeVisible()
+    await expect(page.locator('.browser-detail h2')).toBeVisible()
+
+    const starButton = page.locator('.browser-detail .action-row').getByRole('button', { name: /^(Star|Unstar)$/ })
+    await expect(starButton).toBeVisible()
+    await starButton.click()
+
+    await expect(page.locator('.browser-detail .action-row').getByRole('button', { name: /^(Star|Unstar)$/ })).toBeVisible()
+  })
+
   test('settings danger zone explains that reset wipes all app data', async ({ page }) => {
     await openModeFromHome(page, 'Settings')
 
     await expect(page.locator('text=Danger Zone')).toBeVisible()
     await expect(page.locator('text=Reset Everything wipes all study data and app state for a completely fresh start.')).toBeVisible()
     await expect(page.locator('text=This includes progress history, accuracy stats, SRS reviews, flagged/starred questions, saved mnemonics, chat history, and saved settings.')).toBeVisible()
+  })
+
+  test('settings save and reload preserves the daily goal value', async ({ page }) => {
+    await openModeFromHome(page, 'Settings')
+
+    const dailyGoalInput = page.locator('#s-goal')
+    await expect(dailyGoalInput).toBeVisible()
+
+    await dailyGoalInput.fill('45')
+    await page.getByRole('button', { name: 'Save Settings' }).click()
+    await expect(page.locator('text=Settings saved.')).toBeVisible()
+
+    await page.getByRole('button', { name: 'Reload Settings' }).click()
+    await expect(dailyGoalInput).toHaveValue('45')
   })
 
   test('dashboard readiness calibration bars render with visible fill', async ({ page }) => {
@@ -278,6 +379,38 @@ test.describe('Focused regression checks', () => {
 
     expect(widths.length).toBeGreaterThan(0)
     expect(widths.some((width) => width > 0)).toBeTruthy()
+  })
+
+  test('exam simulator starts a timed run and shows review controls', async ({ page }) => {
+    await openModeFromHome(page, 'Exam Simulator')
+
+    await expect(page.getByRole('button', { name: 'Start Timed Exam' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Start Timed Exam' })).toBeVisible()
+
+    await page.getByRole('button', { name: 'Start Timed Exam' }).click()
+
+    await expect(page.locator('text=Time Left:')).toBeVisible()
+    await expect(page.locator('text=Review Queue')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Finalize Exam Submission' })).toBeVisible()
+  })
+
+  test('speed round loads a question and resolves an answer immediately', async ({ page }) => {
+    await openModeFromHome(page, 'Speed Round')
+
+    await expect(page.getByPlaceholder('Search speed-round questions by question, ID, reference, or topic')).toBeVisible()
+    await expect(page.locator('text=remaining').or(page.locator('text=No speed-round questions found for this search.'))).toBeVisible()
+
+    if (await page.locator('text=No speed-round questions found for this search.').isVisible()) {
+      return
+    }
+
+    await answerFirstVisibleChoice(page)
+
+    await expect(
+      page.locator('text=You answered the last speed-round question correctly.').or(
+        page.locator('text=You missed the last speed-round question. Correct answer:'),
+      ),
+    ).toBeVisible()
   })
 })
 

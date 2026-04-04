@@ -2,6 +2,7 @@ import { type FormEvent, useCallback, useEffect, useState } from 'react'
 import { ipcBridge, type ProgressStats } from '@shared/ipcBridge'
 import type { ExamTier, Question } from '@shared/types'
 import { AnswerButton } from '../components/AnswerButton'
+import { QuestionFigure } from '../components/QuestionFigure'
 import { ScreenHeader } from '../components/ScreenHeader'
 import { StatPill } from '../components/StatPill'
 import { useSRS } from '../hooks/useSRS'
@@ -268,6 +269,8 @@ export function SpeedRoundScreen({
   const roundAccuracy = roundStats.attempted > 0 ? Number(((roundStats.correct / roundStats.attempted) * 100).toFixed(2)) : 0
   const avgSeconds = roundStats.attempted > 0 ? Number((roundStats.totalTimeMs / roundStats.attempted / 1000).toFixed(2)) : 0
   const timerTone = secondsLeft <= 4 ? 'danger' : secondsLeft <= 8 ? 'warn' : 'safe'
+  const searchSummary = searchText.trim().length > 0 ? searchText.trim() : 'None'
+  const roundProgressPct = questionIds.length > 0 ? Math.round(((currentIndex + 1) / questionIds.length) * 100) : 0
 
   return (
     <main className="app-shell">
@@ -319,30 +322,72 @@ export function SpeedRoundScreen({
           </div>
         </form>
 
-        <div className="stats-grid speed-global-stats">
-          <StatPill label="All-time answers" value={globalStats?.totalAnswers ?? 0} />
-          <StatPill label="All-time correct" value={globalStats?.correctAnswers ?? 0} />
-          <StatPill label="All-time accuracy" value={`${globalStats?.accuracyPct ?? 0}%`} />
+        <div className="mode-config-card">
+          <span className="mode-config-label">Study Tools</span>
+          <div className="custom-controls">
+            {lastResolvedQuestion ? (
+              <>
+                <button
+                  type="button"
+                  className="ghost-btn"
+                  onClick={() => onAskAboutQuestion?.(lastResolvedQuestion)}
+                  disabled={saving}
+                >
+                  Ask About This Question
+                </button>
+                <button
+                  type="button"
+                  className="ghost-btn"
+                  onClick={() => onExplainDifferently?.(lastResolvedQuestion)}
+                  disabled={saving}
+                >
+                  Explain Last Question Differently
+                </button>
+              </>
+            ) : (
+              <div className="mode-config-copy">
+                <p className="meta">Resolve at least one question to unlock follow-up explanation tools.</p>
+              </div>
+            )}
+          </div>
         </div>
+      </section>
 
-        {lastResolvedQuestion ? (
-          <div className="action-row">
-            <button
-              type="button"
-              className="ghost-btn"
-              onClick={() => onAskAboutQuestion?.(lastResolvedQuestion)}
-              disabled={saving}
+      <section className="panel question-session-overview">
+        <div className="question-session-overview-row">
+          <div className="question-session-card">
+            <span className="question-session-label">Search Filter</span>
+            <strong>{searchSummary}</strong>
+            <p>Current speed round pulls from the {formatTierLabel(tier)} tier.</p>
+          </div>
+          <div className="question-session-card">
+            <span className="question-session-label">Question Timer</span>
+            <strong>{SECONDS_PER_QUESTION}s</strong>
+            <p>Each question auto-submits when the countdown expires.</p>
+          </div>
+          <div className="question-session-card">
+            <span className="question-session-label">Global Accuracy</span>
+            <strong>{`${globalStats?.accuracyPct ?? 0}%`}</strong>
+            <p>{globalStats?.totalAnswers ?? 0} all-time answers tracked.</p>
+          </div>
+        </div>
+        {hasQuestion ? (
+          <div className="question-session-progress" aria-label="Speed round progress">
+            <div className="question-session-progress-copy">
+              <strong>
+                Question {currentIndex + 1} of {questionIds.length}
+              </strong>
+              <span>{roundProgressPct}% through round</span>
+            </div>
+            <div
+              className="question-session-progress-bar"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={roundProgressPct}
             >
-              Ask About This Question
-            </button>
-            <button
-              type="button"
-              className="ghost-btn"
-              onClick={() => onExplainDifferently?.(lastResolvedQuestion)}
-              disabled={saving}
-            >
-              Explain Last Question Differently
-            </button>
+              <span style={{ width: `${roundProgressPct}%` }} />
+            </div>
           </div>
         ) : null}
       </section>
@@ -362,6 +407,7 @@ export function SpeedRoundScreen({
             </div>
             <h2>{currentQuestion.questionText}</h2>
             <p className="meta">Reference: {currentQuestion.refs}</p>
+            <QuestionFigure question={currentQuestion} />
 
             <div className="answers-grid">
               {currentQuestion.answers.map((answer, idx) => (

@@ -169,11 +169,35 @@ export function MasteryMapScreen({ onBackToModes, onOpenQuestionBrowser }: Maste
                 <>
                   <p className="dashboard-label">Selected Question</p>
                   <p className="mode-tagline">{selected.id}</p>
-                  <p className="meta">{selected.subElement} · {selected.groupId}</p>
-                  <p className="meta">Mastery: {formatMasteryLabel(selected.masteryState)}</p>
-                  <p className="meta">Attempts: {selected.attempts}</p>
-                  <p className="meta">Accuracy: {selected.accuracyPct}%</p>
-                  <p className="meta">{selected.questionText}</p>
+                  <div className="question-session-overview mastery-detail-summary">
+                    <div className="question-session-overview-row">
+                      <div className="question-session-card">
+                        <span className="question-session-label">Topic</span>
+                        <strong>{selected.subElement}</strong>
+                        <p>{selected.groupId}</p>
+                      </div>
+                      <div className="question-session-card">
+                        <span className="question-session-label">Mastery</span>
+                        <strong>{formatMasteryLabel(selected.masteryState)}</strong>
+                        <p>Current question-level learning state.</p>
+                      </div>
+                    </div>
+                    <div className="question-session-overview-row">
+                      <div className="question-session-card">
+                        <span className="question-session-label">Attempts</span>
+                        <strong>{selected.attempts}</strong>
+                        <p>Total recorded answers for this question.</p>
+                      </div>
+                      <div className="question-session-card">
+                        <span className="question-session-label">Accuracy</span>
+                        <strong>{selected.accuracyPct}%</strong>
+                        <p>Correct-answer rate across all attempts.</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mode-config-copy">
+                    <p className="meta">{selected.questionText}</p>
+                  </div>
                   <div className="action-row">
                     <button type="button" onClick={onOpenQuestionBrowser}>Open in Question Browser</button>
                     <button type="button" className="ghost-btn" onClick={() => void fetchMasteryRows()}>Refresh Map</button>

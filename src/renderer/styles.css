@@ -247,19 +247,6 @@ body {
   gap: 0.55rem;
 }
 
-.top-bar h1::before {
-  content: '🤖';
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.8rem;
-  height: 1.8rem;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--accent-soft) 72%, var(--bg-elevated));
-  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border));
-  box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 14%, transparent);
-}
-
 h1 {
   margin: 0;
   font-family: var(--font-heading);
@@ -1681,6 +1668,14 @@ p {
   top: 0.6rem;
 }
 
+.mastery-detail-summary {
+  gap: 0.7rem;
+}
+
+.mastery-detail-summary .question-session-overview-row {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 /* TASK: Settings form grouped layout — titled sections, label-left/control-right rows.
    HOW CODE SOLVES: settings-group divides fields into logical categories separated by
    dividers. settings-field is a two-column grid so all labels align on the left and all
@@ -2431,10 +2426,61 @@ button:disabled {
   line-height: 1.5;
 }
 
+.question-figure-panel {
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--bg-soft) 88%, white 12%), var(--bg-elevated));
+}
+
+.question-figure-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.question-figure-header strong {
+  color: var(--text-main);
+  font-family: var(--font-heading);
+  font-size: 0.98rem;
+}
+
+.question-figure-frame {
+  display: grid;
+  place-items: center;
+  padding: 0.5rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #fff;
+  overflow: hidden;
+}
+
+.question-figure-image {
+  display: block;
+  width: 100%;
+  max-width: 46rem;
+  max-height: 28rem;
+  object-fit: contain;
+}
+
+.question-figure-svg svg {
+  display: block;
+  width: 100%;
+  max-width: 46rem;
+  max-height: 28rem;
+  height: auto;
+}
+
 .question-stage {
   display: grid;
   gap: 0.9rem;
-  animation: question-swap 220ms ease;
+  animation: question-swap 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  transform-origin: center top;
+  will-change: opacity, transform;
 }
 
 .flashcard-card {
@@ -2718,6 +2764,15 @@ button:disabled {
 
 .custom-builder-panel {
   gap: 0.9rem;
+}
+
+.mode-config-copy {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.mode-config-copy .meta {
+  margin: 0;
 }
 
 .custom-controls {
@@ -3063,24 +3118,6 @@ button:disabled {
   font-size: 1rem;
 }
 
-.summary-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.6rem;
-}
-
-.summary-grid p {
-  color: var(--text-main);
-  padding: 0.56rem;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--bg-soft);
-}
-
-.speed-global-stats {
-  text-align: left;
-}
-
 .speed-timer {
   display: inline-block;
   width: fit-content;
@@ -3104,18 +3141,8 @@ button:disabled {
   background: color-mix(in srgb, var(--warn) 20%, transparent);
 }
 
-.voice-diagnostics-grid {
-  display: grid;
-  gap: 0.6rem;
-}
-
-.voice-diagnostics-grid p {
-  margin: 0;
-  color: var(--text-main);
-  padding: 0.56rem;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--bg-soft);
+.settings-reset-summary {
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
 }
 
 .api-key-row {
@@ -3376,12 +3403,12 @@ button:disabled {
 @keyframes question-swap {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(14px) scale(0.992);
   }
 
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
   }
 }
 
@@ -3899,6 +3926,34 @@ button:disabled {
   font-size: 0.72rem;
   color: var(--accent);
   font-weight: 500;
+}
+
+.mode-transition-shell {
+  animation: mode-enter 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  transform-origin: center top;
+  will-change: opacity, transform;
+}
+
+@keyframes mode-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.992);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mode-transition-shell {
+    animation: none;
+  }
+
+  .question-stage {
+    animation: none;
+  }
 }
 
 @media (max-width: 860px) {

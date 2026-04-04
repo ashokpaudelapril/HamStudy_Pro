@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState, type ReactElement } from 'react'
 import { ipcBridge } from '@shared/ipcBridge'
 import type { Question, UserSettings } from '@shared/types'
 import { StudyModeSelect } from './screens/StudyModeSelect'
@@ -160,81 +160,101 @@ function App() {
   //              don't flash intermediate loading text between screens.
   const loadingFallback = null
 
+  let activeScreen: ReactElement | null = null
+
+  if (mode === 'select') {
+    activeScreen = <StudyModeSelect onSelectMode={setMode} />
+  } else if (mode === 'quiz') {
+    activeScreen = (
+      <QuestionScreen
+        onBackToModes={() => setMode('select')}
+        onAskAboutQuestion={(question) => openTutorChatFrom('quiz', question)}
+        onExplainDifferently={(question) =>
+          openTutorChatFrom('quiz', question, alternateExplanationPrompt)
+        }
+      />
+    )
+  } else if (mode === 'dashboard') {
+    activeScreen = <DashboardScreen onBackToModes={() => setMode('select')} onStartDailyChallenge={() => setMode('weak-area')} />
+  } else if (mode === 'analytics') {
+    activeScreen = <AnalyticsScreen onBackToModes={() => setMode('select')} />
+  } else if (mode === 'mastery-map') {
+    activeScreen = <MasteryMapScreen onBackToModes={() => setMode('select')} onOpenQuestionBrowser={() => setMode('browser')} />
+  } else if (mode === 'settings') {
+    activeScreen = <SettingsScreen onBackToModes={() => setMode('select')} />
+  } else if (mode === 'tutor-chat') {
+    activeScreen = <TutorChatScreen onBackToModes={handleBackFromTutorChat} chatContext={tutorChatContext} />
+  } else if (mode === 'flashcard') {
+    activeScreen = (
+      <FlashcardScreen
+        onBackToModes={() => setMode('select')}
+        onAskAboutQuestion={(question) => openTutorChatFrom('flashcard', question)}
+        onExplainDifferently={(question) =>
+          openTutorChatFrom('flashcard', question, alternateExplanationPrompt)
+        }
+      />
+    )
+  } else if (mode === 'speed') {
+    activeScreen = (
+      <SpeedRoundScreen
+        onBackToModes={() => setMode('select')}
+        onAskAboutQuestion={(question) => openTutorChatFrom('speed', question)}
+        onExplainDifferently={(question) =>
+          openTutorChatFrom('speed', question, alternateExplanationPrompt)
+        }
+      />
+    )
+  } else if (mode === 'weak-area') {
+    activeScreen = (
+      <WeakAreaScreen
+        onBackToModes={() => setMode('select')}
+        onAskAboutQuestion={(question) => openTutorChatFrom('weak-area', question)}
+        onExplainDifferently={(question) =>
+          openTutorChatFrom('weak-area', question, alternateExplanationPrompt)
+        }
+      />
+    )
+  } else if (mode === 'custom') {
+    activeScreen = (
+      <CustomQuizScreen
+        onBackToModes={() => setMode('select')}
+        onAskAboutQuestion={(question) => openTutorChatFrom('custom', question)}
+        onExplainDifferently={(question) =>
+          openTutorChatFrom('custom', question, alternateExplanationPrompt)
+        }
+      />
+    )
+  } else if (mode === 'browser') {
+    activeScreen = (
+      <QuestionBrowserScreen
+        onBackToModes={() => setMode('select')}
+        onAskAboutQuestion={(question) => openTutorChatFrom('browser', question)}
+        onExplainDifferently={(question) =>
+          openTutorChatFrom('browser', question, alternateExplanationPrompt)
+        }
+      />
+    )
+  } else if (mode === 'exam') {
+    activeScreen = (
+      <ExamSimulatorScreen
+        onBackToModes={() => setMode('select')}
+        onAskAboutQuestion={(question) => openTutorChatFrom('exam', question)}
+        onExplainDifferently={(question) =>
+          openTutorChatFrom('exam', question, alternateExplanationPrompt)
+        }
+      />
+    )
+  } else if (mode === 'reference') {
+    activeScreen = <ReferenceSheetsScreen onBackToModes={() => setMode('select')} />
+  } else if (mode === 'achievements') {
+    activeScreen = <AchievementsScreen onBackToModes={() => setMode('select')} />
+  }
+
   return (
     <Suspense fallback={loadingFallback}>
-      {mode === 'select' ? (
-        <StudyModeSelect onSelectMode={setMode} />
-      ) : mode === 'quiz' ? (
-        <QuestionScreen
-          onBackToModes={() => setMode('select')}
-          onAskAboutQuestion={(question) => openTutorChatFrom('quiz', question)}
-          onExplainDifferently={(question) =>
-            openTutorChatFrom('quiz', question, alternateExplanationPrompt)
-          }
-        />
-      ) : mode === 'dashboard' ? (
-        <DashboardScreen onBackToModes={() => setMode('select')} onStartDailyChallenge={() => setMode('weak-area')} />
-      ) : mode === 'analytics' ? (
-        <AnalyticsScreen onBackToModes={() => setMode('select')} />
-      ) : mode === 'mastery-map' ? (
-        <MasteryMapScreen onBackToModes={() => setMode('select')} onOpenQuestionBrowser={() => setMode('browser')} />
-      ) : mode === 'settings' ? (
-        <SettingsScreen onBackToModes={() => setMode('select')} />
-      ) : mode === 'tutor-chat' ? (
-        <TutorChatScreen onBackToModes={handleBackFromTutorChat} chatContext={tutorChatContext} />
-      ) : mode === 'flashcard' ? (
-        <FlashcardScreen
-          onBackToModes={() => setMode('select')}
-          onAskAboutQuestion={(question) => openTutorChatFrom('flashcard', question)}
-          onExplainDifferently={(question) =>
-            openTutorChatFrom('flashcard', question, alternateExplanationPrompt)
-          }
-        />
-      ) : mode === 'speed' ? (
-        <SpeedRoundScreen
-          onBackToModes={() => setMode('select')}
-          onAskAboutQuestion={(question) => openTutorChatFrom('speed', question)}
-          onExplainDifferently={(question) =>
-            openTutorChatFrom('speed', question, alternateExplanationPrompt)
-          }
-        />
-      ) : mode === 'weak-area' ? (
-        <WeakAreaScreen
-          onBackToModes={() => setMode('select')}
-          onAskAboutQuestion={(question) => openTutorChatFrom('weak-area', question)}
-          onExplainDifferently={(question) =>
-            openTutorChatFrom('weak-area', question, alternateExplanationPrompt)
-          }
-        />
-      ) : mode === 'custom' ? (
-        <CustomQuizScreen
-          onBackToModes={() => setMode('select')}
-          onAskAboutQuestion={(question) => openTutorChatFrom('custom', question)}
-          onExplainDifferently={(question) =>
-            openTutorChatFrom('custom', question, alternateExplanationPrompt)
-          }
-        />
-      ) : mode === 'browser' ? (
-        <QuestionBrowserScreen
-          onBackToModes={() => setMode('select')}
-          onAskAboutQuestion={(question) => openTutorChatFrom('browser', question)}
-          onExplainDifferently={(question) =>
-            openTutorChatFrom('browser', question, alternateExplanationPrompt)
-          }
-        />
-      ) : mode === 'exam' ? (
-        <ExamSimulatorScreen
-          onBackToModes={() => setMode('select')}
-          onAskAboutQuestion={(question) => openTutorChatFrom('exam', question)}
-          onExplainDifferently={(question) =>
-            openTutorChatFrom('exam', question, alternateExplanationPrompt)
-          }
-        />
-      ) : mode === 'reference' ? (
-        <ReferenceSheetsScreen onBackToModes={() => setMode('select')} />
-      ) : mode === 'achievements' ? (
-        <AchievementsScreen onBackToModes={() => setMode('select')} />
-      ) : null}
+      <div key={mode} className="mode-transition-shell">
+        {activeScreen}
+      </div>
     </Suspense>
   )
 }

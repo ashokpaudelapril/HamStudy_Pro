@@ -258,8 +258,10 @@ export function WeakAreaScreen({ onBackToModes, onAskAboutQuestion, onExplainDif
         </div>
         <div className="mode-config-card">
           <span className="mode-config-label">{weakTopicCardTitle}</span>
-          <p className="meta">Focus: {weakTopicSummary}</p>
-          <p className="meta">{weakTopicSupportCopy}</p>
+          <div className="mode-config-copy">
+            <p className="meta">Focus: {weakTopicSummary}</p>
+            <p className="meta">{weakTopicSupportCopy}</p>
+          </div>
         </div>
         <div className="mode-config-card">
           <span className="mode-config-label">Study Tools</span>

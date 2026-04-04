@@ -1,6 +1,8 @@
 import type Database from 'better-sqlite3'
 import { readFile } from 'node:fs/promises'
+import { statSync } from 'node:fs'
 import { join } from 'node:path'
+import { app } from 'electron'
 import type { ExamTier } from '../../shared/types'
 import { initSchema, getQuestionsCount, seedQuestions } from './queries'
 
@@ -35,18 +37,42 @@ function parseIdToSubElementAndGroup(id: string): { subElement: string; groupId:
   }
 }
 
+function getBundledDataPath(...parts: string[]): string {
+  const basePath = app.isPackaged ? join(process.resourcesPath, 'data') : join(process.cwd(), 'data')
+  return join(basePath, ...parts)
+}
+
+function ensureAppStateTable(db: Database.Database): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS app_state (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
+  `)
+}
+
+function computeHintFilesSignature(paths: string[]): string {
+  return paths
+    .map((path) => {
+      const details = statSync(path)
+      return `${path}:${details.size}:${Math.floor(details.mtimeMs)}`
+    })
+    .join('|')
+}
+
 // TASK: Seed the SQLite DB from the offline FCC JSON pools (idempotent).
 // HOW CODE SOLVES: Ensures schema exists, checks if the DB already has questions,
 //                   then imports all JSON records using INSERT OR IGNORE to avoid duplicates.
 export async function seedQuestionsIfNeeded(db: Database.Database): Promise<void> {
   initSchema(db)
+  ensureAppStateTable(db)
 
   const existing = getQuestionsCount(db)
   if (existing > 0) return
 
-  const technicianPath = join(process.cwd(), 'data', 'technician.json')
-  const generalPath = join(process.cwd(), 'data', 'general.json')
-  const extraPath = join(process.cwd(), 'data', 'extra.json')
+  const technicianPath = getBundledDataPath('technician.json')
+  const generalPath = getBundledDataPath('general.json')
+  const extraPath = getBundledDataPath('extra.json')
 
   const [technicianRaw, generalRaw, extraRaw] = await Promise.all([
     readFile(technicianPath, 'utf8'),
@@ -119,11 +145,42 @@ export async function seedQuestionsIfNeeded(db: Database.Database): Promise<void
 //                  take effect after an app restart. Only writes non-empty values, leaving DB
 //                  columns untouched when a field is blank (allows partial authoring).
 export async function applyHintsIfPresent(db: Database.Database): Promise<void> {
+  ensureAppStateTable(db)
+
   const tiers: Array<{ file: string }> = [
     { file: 'technician' },
     { file: 'general' },
     { file: 'extra' },
   ]
+
+  const hintPaths = tiers.map(({ file }) => getBundledDataPath('hints', `${file}.json`))
+  const existingPaths = hintPaths.filter((path) => {
+    try {
+      statSync(path)
+      return true
+    } catch {
+      return false
+    }
+  })
+
+  if (existingPaths.length === 0) {
+    return
+  }
+
+  const nextSignature = computeHintFilesSignature(existingPaths)
+  const readSignatureStmt = db.prepare<[string], { value: string }>(
+    `SELECT value FROM app_state WHERE key = ?`,
+  )
+  const writeSignatureStmt = db.prepare(
+    `INSERT INTO app_state(key, value)
+     VALUES ('hint_files_signature', ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+  )
+
+  const previousSignature = readSignatureStmt.get('hint_files_signature')?.value
+  if (previousSignature === nextSignature) {
+    return
+  }
 
   const updateStmt = db.prepare<{
     id: string
@@ -157,7 +214,7 @@ export async function applyHintsIfPresent(db: Database.Database): Promise<void> 
   })
 
   for (const { file } of tiers) {
-    const hintPath = join(process.cwd(), 'data', 'hints', `${file}.json`)
+    const hintPath = getBundledDataPath('hints', `${file}.json`)
     try {
       const raw = await readFile(hintPath, 'utf8')
       const hintMap = JSON.parse(raw) as HintMap
@@ -167,5 +224,6 @@ export async function applyHintsIfPresent(db: Database.Database): Promise<void> 
       // FIX APPLIED: Skip silently — missing hint files are not a fatal startup error.
     }
   }
-}
 
+  writeSignatureStmt.run(nextSignature)
+}

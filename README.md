@@ -7,20 +7,22 @@ HamStudy Pro is an offline-first Electron + React + TypeScript desktop app for F
 - Quiz, flashcard, speed round, weak-area drill, custom quiz, and full exam simulator modes
 - Dashboard and analytics views for readiness, streaks, due reviews, and study activity
 - Mastery map and question browser for inspecting the full FCC question pool
-- Offline reference sheets and hint/explanation support
+- Offline reference sheets, authored hints, and figure support for figure-based questions
 - Achievements, XP progression, and daily challenge tracking
 - Optional AI tutor and mnemonic tooling when a provider is configured
 
 ## Current Project Status
 
-The app is now well past bare scaffolding. The current workspace includes:
+The app is now functionally complete for core study use. The current workspace includes:
 
 - Electron main, preload, renderer, and shared typed IPC structure
 - Local SQLite-backed progress and question data flow
 - FCC question pools in `data/`
-- Generated first-pass hint datasets in `data/hints/`
-- Polished home and achievements screens
-- TypeScript typecheck passing
+- Detailed authored hint datasets for Technician, General, and Extra in `data/hints/`
+- Figure image assets in `data/images/` for figure-based pool questions
+- Multiple study modes, dashboard/analytics, question browser, and reference sheets
+- TypeScript build and Playwright regression coverage passing
+- Packaged macOS app build passing
 
 ## Run Commands
 
@@ -30,10 +32,27 @@ From this directory:
 - Start dev app: `npm run dev`
 - Typecheck: `npm run typecheck`
 - Build production bundle: `npm run build`
+- Build distributable app bundle: `npm run dist`
+- Build unpacked release directory: `npm run dist:dir`
+- Build macOS release artifacts: `npm run dist:mac`
+- Generate branded macOS icon assets: `npm run generate:icon`
 - Run tests: `npm run test`
+- Run browser regression suite: `npm run test:e2e`
 - Lint: `npm run lint`
 - Generate API-backed hints: `npm run generate-hints`
 - Generate local fallback hints: `npm run generate-hints:local`
+
+## Verified State
+
+Most recent local verification:
+
+- `npm run typecheck`
+- `npm run build`
+- `npm run dist:dir`
+
+Latest packaged app output:
+
+- `release/mac-arm64/HamStudy Pro.app`
 
 ## Directory Map
 
@@ -43,7 +62,8 @@ hamstudy-pro/
 │   ├── technician.json       # FCC Technician question pool
 │   ├── general.json          # FCC General question pool
 │   ├── extra.json            # FCC Amateur Extra question pool
-│   └── hints/                # Hint / explanation / mnemonic datasets
+│   ├── hints/                # Hint / explanation / mnemonic datasets
+│   └── images/               # Figure assets for figure-based questions
 ├── public/                   # Static assets
 ├── scripts/                  # Utility scripts such as hint generation
 ├── src/
@@ -76,9 +96,22 @@ The project currently supports two hint-generation paths:
 
 The local generator is intended as a fallback baseline so hint files are never left empty.
 
+## First Tester Notes
+
+- Open the packaged app from `release/mac-arm64/HamStudy Pro.app`
+- If macOS warns on first launch, use right-click -> Open
+- Figure-based questions should show their matching images inside the study flow
+- The app stores progress locally, so testing on one machine will reuse that machine's local study state
+
+## Release Docs
+
+- GitHub release workflow: `DOCS/GITHUB_RELEASE_GUIDE.md`
+- Repo/source layout notes: `DOCS/REPO_STRUCTURE_NOTES.md`
+- Manual tester checklist: `DOCS/FIRST_TESTER_CHECKLIST.md`
+
 ## Recommended Next Steps
 
-1. Continue polishing study-session UX, especially hint presentation and question review flow
-2. Improve authored quality of the generated hint datasets over time
-3. Add more renderer-side tests for key learner journeys
-4. Keep refining onboarding, dashboard guidance, and exam-readiness feedback
+1. Add Developer ID signing and notarization for public macOS distribution
+2. Do a manual smoke pass on a packaged `dist:mac` build
+3. Write short release notes for first external testers
+4. Continue improving hint quality and visual polish over time

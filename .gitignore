@@ -6,6 +6,8 @@ out/
 dist/
 dist-ssr/
 release/
+.electron-home/
+build/icon.iconset/
 
 # Test and tooling output
 coverage/

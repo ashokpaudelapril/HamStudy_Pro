@@ -1,5 +1,6 @@
 import type { Question } from '@shared/types'
 import { AnswerButton } from './AnswerButton'
+import { QuestionFigure } from './QuestionFigure'
 
 type QuestionCardProps = {
   question: Question
@@ -34,6 +35,7 @@ export function QuestionCard({
       </p>
       <h2 id={promptId}>{question.questionText}</h2>
       <p className="meta" id={refId}>Reference: {question.refs}</p>
+      <QuestionFigure question={question} />
 
       <fieldset className="answers-grid" disabled={submitted || saving}>
         <legend className="sr-only">Select the correct answer</legend>

@@ -530,7 +530,9 @@ export function ExamSimulatorScreen({
         <section className="panel mode-config-panel exam-config-panel">
           <div className="mode-config-card">
             <span className="mode-config-label">Overview</span>
-            <p className="meta">Pick a license tier to start a timed exam simulation.</p>
+            <div className="mode-config-copy">
+              <p className="meta">Pick a license tier to start a timed exam simulation.</p>
+            </div>
           </div>
 
           <div className="mode-config-card">
@@ -610,12 +612,29 @@ export function ExamSimulatorScreen({
             </p>
           </div>
 
-          <div className="stats-grid">
-            <StatPill label="Answered" value={`${answeredCount}/${questions.length}`} />
-            <StatPill label="Flagged" value={flaggedCount} />
-            <StatPill label="Unanswered" value={unansweredCount} />
-            <StatPill label="Attempted" value={`${attemptedPct}%`} />
-            <StatPill label="Scoring" value="Shown after final submit" />
+          <div className="question-session-overview">
+            <div className="question-session-overview-row">
+              <div className="question-session-card">
+                <span className="question-session-label">Answered</span>
+                <strong>{answeredCount}/{questions.length}</strong>
+                <p>Questions with a selected answer so far.</p>
+              </div>
+              <div className="question-session-card">
+                <span className="question-session-label">Flagged</span>
+                <strong>{flaggedCount}</strong>
+                <p>Questions marked for review before submission.</p>
+              </div>
+              <div className="question-session-card">
+                <span className="question-session-label">Unanswered</span>
+                <strong>{unansweredCount}</strong>
+                <p>Any unanswered item will count as incorrect.</p>
+              </div>
+              <div className="question-session-card">
+                <span className="question-session-label">Attempted</span>
+                <strong>{attemptedPct}%</strong>
+                <p>Coverage of the current exam so far.</p>
+              </div>
+            </div>
           </div>
 
           <p className="meta">

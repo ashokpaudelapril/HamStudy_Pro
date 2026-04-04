@@ -480,10 +480,12 @@ export function SettingsScreen({ onBackToModes }: SettingsScreenProps) {
 
       <section className="panel">
         <h4 className="settings-group-title">AI &amp; API Keys</h4>
-        <p className="meta">
-          Optional — provide your own API key to unlock live AI features (Elmer tutor chat, adaptive study plans).
-          Keys are stored in the macOS Keychain and never leave your machine.
-        </p>
+        <div className="mode-config-copy">
+          <p className="meta">
+            Optional — provide your own API key to unlock live AI features (Elmer tutor chat, adaptive study plans).
+            Keys are stored in the macOS Keychain and never leave your machine.
+          </p>
+        </div>
         <section className="settings-ai-summary">
           <div className="settings-ai-summary-card">
             <span className="settings-overview-label">Active provider</span>
@@ -577,12 +579,32 @@ export function SettingsScreen({ onBackToModes }: SettingsScreenProps) {
         </div>
 
         {lastReset ? (
-          <div className="summary-grid">
-            <p>Answers cleared: {lastReset.clearedAnswers}</p>
-            <p>Sessions cleared: {lastReset.clearedSessions}</p>
-            <p>SRS cards cleared: {lastReset.clearedSrsCards}</p>
-            <p>Flags/stars reset: {lastReset.resetQuestionReviewState}</p>
-            <p>Settings cleared: {lastReset.clearedSettings}</p>
+          <div className="question-session-overview-row settings-reset-summary">
+            <div className="question-session-card">
+              <span className="question-session-label">Answers Cleared</span>
+              <strong>{lastReset.clearedAnswers}</strong>
+              <p>Progress answer records removed.</p>
+            </div>
+            <div className="question-session-card">
+              <span className="question-session-label">Sessions Cleared</span>
+              <strong>{lastReset.clearedSessions}</strong>
+              <p>Saved study sessions removed.</p>
+            </div>
+            <div className="question-session-card">
+              <span className="question-session-label">SRS Cards Cleared</span>
+              <strong>{lastReset.clearedSrsCards}</strong>
+              <p>Spaced-repetition review state removed.</p>
+            </div>
+            <div className="question-session-card">
+              <span className="question-session-label">Flags & Stars Reset</span>
+              <strong>{lastReset.resetQuestionReviewState ? 'Yes' : 'No'}</strong>
+              <p>Question review markers reset.</p>
+            </div>
+            <div className="question-session-card">
+              <span className="question-session-label">Settings Cleared</span>
+              <strong>{lastReset.clearedSettings}</strong>
+              <p>Saved preferences removed from local state.</p>
+            </div>
           </div>
         ) : null}
 
@@ -592,10 +614,24 @@ export function SettingsScreen({ onBackToModes }: SettingsScreenProps) {
       <section className="panel">
         <p className="mode-tagline">Voice Diagnostics</p>
         {voiceDiagnostics ? (
-          <div className="voice-diagnostics-grid">
-            <p>Platform: {voiceDiagnostics.platform}</p>
-            <p>Supported: {voiceDiagnostics.supported ? 'Yes' : 'No'}</p>
-            <p>Voices available: {voiceDiagnostics.voices.length}</p>
+          <div className="question-session-overview">
+            <div className="question-session-overview-row">
+              <div className="question-session-card">
+                <span className="question-session-label">Platform</span>
+                <strong>{voiceDiagnostics.platform}</strong>
+                <p>Current runtime platform for voice services.</p>
+              </div>
+              <div className="question-session-card">
+                <span className="question-session-label">Supported</span>
+                <strong>{voiceDiagnostics.supported ? 'Yes' : 'No'}</strong>
+                <p>Whether text-to-speech is available in this environment.</p>
+              </div>
+              <div className="question-session-card">
+                <span className="question-session-label">Voices Available</span>
+                <strong>{voiceDiagnostics.voices.length}</strong>
+                <p>Installed voices currently exposed to the app.</p>
+              </div>
+            </div>
             {voiceDiagnostics.error ? <p className="error-text">{voiceDiagnostics.error}</p> : null}
             <div className="action-row">
               <button

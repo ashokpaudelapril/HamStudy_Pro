@@ -2,12 +2,18 @@
   "name": "hamstudy-pro",
   "private": true,
   "version": "0.0.0",
+  "description": "Offline-first desktop FCC amateur radio exam prep app",
+  "author": "HamStudy Pro",
   "type": "module",
   "main": "out/main/index.js",
   "scripts": {
     "dev": "env -u ELECTRON_RUN_AS_NODE electron-vite dev",
     "predev": "npm run rebuild:native",
     "build": "tsc -b && electron-vite build",
+    "dist": "npm run build && electron-builder",
+    "dist:dir": "npm run build && electron-builder --dir",
+    "dist:mac": "npm run build && electron-builder --mac zip dmg",
+    "generate:icon": "bash scripts/generate-mac-icon.sh",
     "lint": "eslint .",
     "preview": "env -u ELECTRON_RUN_AS_NODE electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json",
@@ -28,7 +34,6 @@
     "better-sqlite3": "^12.8.0",
     "concurrently": "^9.2.1",
     "cross-env": "^10.1.0",
-    "electron": "^41.0.3",
     "electron-vite": "^5.0.0",
     "keytar": "^7.9.0",
     "react": "^19.2.4",
@@ -47,6 +52,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.2.0",
+    "electron": "^41.0.3",
     "electron-builder": "^26.8.1",
     "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^7.0.1",
@@ -57,5 +63,30 @@
     "typescript-eslint": "^8.57.0",
     "vite": "^7.3.1",
     "vitest": "^3.2.4"
+  },
+  "build": {
+    "appId": "com.hamstudy.pro",
+    "productName": "HamStudy Pro",
+    "icon": "icon.icns",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "data",
+        "to": "data"
+      }
+    ],
+    "mac": {
+      "target": [
+        "zip",
+        "dmg"
+      ],
+      "category": "public.app-category.education"
+    }
   }
 }

@@ -279,7 +279,7 @@ export function CustomQuizScreen({ onBackToModes, onAskAboutQuestion, onExplainD
       />
 
       {phase === 'builder' ? (
-        <section className="panel custom-builder-panel">
+        <section className="panel mode-config-panel custom-builder-panel">
           <div className="mode-config-card">
             <span className="mode-config-label">Tier</span>
             <div className="exam-tier-buttons">
@@ -343,11 +343,13 @@ export function CustomQuizScreen({ onBackToModes, onAskAboutQuestion, onExplainD
               })}
             </div>
 
-            <p className="meta">
-              {selectedSubElements.length > 0
-                ? `Selected topics: ${selectedSubElements.join(', ')}`
-                : 'No topic selected: quiz will pull from all topics in this tier.'}
-            </p>
+            <div className="mode-config-copy">
+              <p className="meta">
+                {selectedSubElements.length > 0
+                  ? `Selected topics: ${selectedSubElements.join(', ')}`
+                  : 'No topic selected: quiz will pull from all topics in this tier.'}
+              </p>
+            </div>
           </div>
 
           <div className="action-row">

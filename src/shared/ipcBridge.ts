@@ -42,6 +42,64 @@ const DEFAULT_USER_SETTINGS: UserSettings = {
 }
 
 let offlineQuestionPoolsPromise: Promise<Record<'technician' | 'general' | 'extra', Question[]>> | null = null
+const LOCAL_SETTINGS_KEY = 'hamstudy-pro:settings'
+const LOCAL_REVIEW_STATE_KEY = 'hamstudy-pro:question-review-state'
+
+type LocalReviewState = {
+  starred?: boolean
+  flagged?: boolean
+}
+
+function readLocalStorageJson<T>(key: string, fallback: T): T {
+  try {
+    const raw = globalThis.localStorage?.getItem(key)
+    if (!raw) {
+      return fallback
+    }
+
+    return JSON.parse(raw) as T
+  } catch {
+    return fallback
+  }
+}
+
+function writeLocalStorageJson(key: string, value: unknown): void {
+  try {
+    globalThis.localStorage?.setItem(key, JSON.stringify(value))
+  } catch {
+    // ignore compatibility-mode storage failures
+  }
+}
+
+function getLocalSettingsSnapshot(): UserSettings {
+  return readLocalStorageJson<UserSettings>(LOCAL_SETTINGS_KEY, DEFAULT_USER_SETTINGS)
+}
+
+function setLocalSettingsSnapshot(settings: UserSettings): UserSettings {
+  writeLocalStorageJson(LOCAL_SETTINGS_KEY, settings)
+  return settings
+}
+
+function getLocalReviewStateSnapshot(): Record<string, LocalReviewState> {
+  return readLocalStorageJson<Record<string, LocalReviewState>>(LOCAL_REVIEW_STATE_KEY, {})
+}
+
+function setLocalReviewStateSnapshot(next: Record<string, LocalReviewState>): void {
+  writeLocalStorageJson(LOCAL_REVIEW_STATE_KEY, next)
+}
+
+function applyOfflineReviewState(question: Question): Question {
+  const reviewState = getLocalReviewStateSnapshot()[question.id]
+  if (!reviewState) {
+    return question
+  }
+
+  return {
+    ...question,
+    starred: reviewState.starred ?? false,
+    flagged: reviewState.flagged ?? false,
+  }
+}
 
 function parseIdToSubElementAndGroup(id: string): { subElement: string; groupId: string } {
   const tierLetter = id[0] as 'T' | 'G' | 'E'
@@ -55,7 +113,7 @@ function parseIdToSubElementAndGroup(id: string): { subElement: string; groupId:
 
 function mapOfflinePoolQuestion(question: OfflineJsonPoolQuestion, tier: 'technician' | 'general' | 'extra'): Question {
   const { subElement, groupId } = parseIdToSubElementAndGroup(question.id)
-  return {
+  return applyOfflineReviewState({
     id: question.id,
     examTier: tier,
     subElement,
@@ -64,7 +122,7 @@ function mapOfflinePoolQuestion(question: OfflineJsonPoolQuestion, tier: 'techni
     answers: question.answers,
     correctIndex: question.correct,
     refs: question.refs,
-  }
+  })
 }
 
 async function getOfflineQuestionPools(): Promise<Record<'technician' | 'general' | 'extra', Question[]>> {
@@ -315,9 +373,29 @@ async function getQuestionByIdImpl(questionId: string): Promise<Question | null>
 // TASK: Renderer-side typed wrapper for `questions:search`.
 // HOW CODE SOLVES: Delegates DB-backed search through preload IPC methods.
 async function searchQuestionsImpl(filter: QuestionSearchFilter): Promise<Question[]> {
-  const hamstudyApi = await getHamstudyApiOrThrow()
-  if (!hamstudyApi.searchQuestions) {
-    throw new Error('Question search IPC bridge is not available.')
+  const hamstudyApi = await getHamstudyApiOrThrow().catch(() => null)
+  if (!hamstudyApi?.searchQuestions) {
+    const offlinePools = await getOfflineQuestionPools()
+    const normalized = filter.query.trim().toLowerCase()
+    const limit = filter.limit ?? 50
+    const tiers = filter.tier ? [filter.tier] : (['technician', 'general', 'extra'] as const)
+    const matches = tiers
+      .flatMap((tier) => offlinePools[tier])
+      .filter((question) => {
+        if (normalized.length === 0) {
+          return true
+        }
+
+        return [
+          question.id,
+          question.questionText,
+          question.refs,
+          question.subElement,
+          question.groupId,
+        ].some((value) => value.toLowerCase().includes(normalized))
+      })
+
+    return matches.slice(0, limit)
   }
   return hamstudyApi.searchQuestions(filter)
 }
@@ -325,9 +403,54 @@ async function searchQuestionsImpl(filter: QuestionSearchFilter): Promise<Questi
 // TASK: Renderer-side typed wrapper for `questions:get-browser-rows`.
 // HOW CODE SOLVES: Loads browser list rows with tier/query/mastery/review-state filters.
 async function getQuestionBrowserRowsImpl(filter: QuestionBrowserFilter): Promise<QuestionBrowserRow[]> {
-  const hamstudyApi = await getHamstudyApiOrThrow()
-  if (!hamstudyApi.getQuestionBrowserRows) {
-    throw new Error('Question browser IPC bridge is not available. Restart the app to reload preload bridge changes.')
+  const hamstudyApi = await getHamstudyApiOrThrow().catch(() => null)
+  if (!hamstudyApi?.getQuestionBrowserRows) {
+    const offlinePools = await getOfflineQuestionPools()
+    const normalized = (filter.query ?? '').trim().toLowerCase()
+    const baseRows = offlinePools[filter.tier]
+      .map(applyOfflineReviewState)
+      .filter((question) => {
+        if (filter.subElement !== 'all' && question.subElement !== filter.subElement) {
+          return false
+        }
+        if (filter.starredOnly && !question.starred) {
+          return false
+        }
+        if (filter.flaggedOnly && !question.flagged) {
+          return false
+        }
+        if (filter.mastery !== 'all' && filter.mastery !== 'unseen') {
+          return false
+        }
+        if (normalized.length === 0) {
+          return true
+        }
+
+        return [
+          question.id,
+          question.questionText,
+          question.refs,
+          question.subElement,
+          question.groupId,
+        ].some((value) => value.toLowerCase().includes(normalized))
+      })
+      .slice(0, filter.limit)
+      .map((question) => ({
+        id: question.id,
+        examTier: question.examTier,
+        subElement: question.subElement,
+        groupId: question.groupId,
+        questionText: question.questionText,
+        refs: question.refs,
+        starred: question.starred ?? false,
+        flagged: question.flagged ?? false,
+        attempts: 0,
+        correctAnswers: 0,
+        accuracyPct: 0,
+        masteryState: 'unseen' as const,
+      }))
+
+    return baseRows
   }
   return hamstudyApi.getQuestionBrowserRows(filter)
 }
@@ -335,9 +458,25 @@ async function getQuestionBrowserRowsImpl(filter: QuestionBrowserFilter): Promis
 // TASK: Renderer-side typed wrapper for `questions:get-browser-detail`.
 // HOW CODE SOLVES: Loads explanation/history/SRS detail payload for one selected question.
 async function getQuestionBrowserDetailImpl(filter: QuestionBrowserDetailFilter): Promise<QuestionBrowserDetail | null> {
-  const hamstudyApi = await getHamstudyApiOrThrow()
-  if (!hamstudyApi.getQuestionBrowserDetail) {
-    throw new Error('Question browser detail IPC bridge is not available. Restart the app to reload preload bridge changes.')
+  const hamstudyApi = await getHamstudyApiOrThrow().catch(() => null)
+  if (!hamstudyApi?.getQuestionBrowserDetail) {
+    const question = await getQuestionByIdImpl(filter.questionId)
+    if (!question) {
+      return null
+    }
+
+    return {
+      question,
+      srsCard: null,
+      historySummary: {
+        attempts: 0,
+        correctAnswers: 0,
+        accuracyPct: 0,
+        averageTimeMs: 0,
+        lastAnsweredAt: null,
+      },
+      recentAnswers: [],
+    }
   }
   return hamstudyApi.getQuestionBrowserDetail(filter)
 }
@@ -345,9 +484,25 @@ async function getQuestionBrowserDetailImpl(filter: QuestionBrowserDetailFilter)
 // TASK: Renderer-side typed wrapper for `questions:update-review-state`.
 // HOW CODE SOLVES: Persists per-question starred/flagged review flags through main process DB APIs.
 async function updateQuestionReviewStateImpl(input: UpdateQuestionReviewStateInput): Promise<Question> {
-  const hamstudyApi = await getHamstudyApiOrThrow()
-  if (!hamstudyApi.updateQuestionReviewState) {
-    throw new Error('Question review-state IPC bridge is not available. Restart the app to reload preload bridge changes.')
+  const hamstudyApi = await getHamstudyApiOrThrow().catch(() => null)
+  if (!hamstudyApi?.updateQuestionReviewState) {
+    const question = await getQuestionByIdImpl(input.questionId)
+    if (!question) {
+      throw new Error(`Question not found for id ${input.questionId}.`)
+    }
+
+    const snapshot = getLocalReviewStateSnapshot()
+    snapshot[input.questionId] = {
+      starred: input.starred ?? question.starred ?? false,
+      flagged: input.flagged ?? question.flagged ?? false,
+    }
+    setLocalReviewStateSnapshot(snapshot)
+
+    return {
+      ...question,
+      starred: snapshot[input.questionId].starred ?? false,
+      flagged: snapshot[input.questionId].flagged ?? false,
+    }
   }
   return hamstudyApi.updateQuestionReviewState(input)
 }
@@ -355,9 +510,10 @@ async function updateQuestionReviewStateImpl(input: UpdateQuestionReviewStateInp
 // TASK: Renderer-side typed wrapper for `questions:get-weak-area-pool`.
 // HOW CODE SOLVES: Delegates weak-area pool requests to preload IPC bridge methods.
 async function getWeakAreaQuestionPoolImpl(filter: WeakAreaPoolFilter): Promise<Question[]> {
-  const hamstudyApi = await getHamstudyApiOrThrow()
-  if (!hamstudyApi.getWeakAreaQuestionPool) {
-    throw new Error('Weak-area question IPC bridge is not available. Restart the app to reload preload bridge changes.')
+  const hamstudyApi = await getHamstudyApiOrThrow().catch(() => null)
+  if (!hamstudyApi?.getWeakAreaQuestionPool) {
+    const offlinePools = await getOfflineQuestionPools()
+    return offlinePools[filter.tier].slice(0, filter.limit ?? 35)
   }
   return hamstudyApi.getWeakAreaQuestionPool(filter)
 }
@@ -365,9 +521,13 @@ async function getWeakAreaQuestionPoolImpl(filter: WeakAreaPoolFilter): Promise<
 // TASK: Renderer-side typed wrapper for `questions:get-custom-quiz-pool`.
 // HOW CODE SOLVES: Delegates custom pool requests to preload IPC bridge methods.
 async function getCustomQuizQuestionPoolImpl(filter: CustomQuizPoolFilter): Promise<Question[]> {
-  const hamstudyApi = await getHamstudyApiOrThrow()
-  if (!hamstudyApi.getCustomQuizQuestionPool) {
-    throw new Error('Custom quiz IPC bridge is not available. Restart the app to reload preload bridge changes.')
+  const hamstudyApi = await getHamstudyApiOrThrow().catch(() => null)
+  if (!hamstudyApi?.getCustomQuizQuestionPool) {
+    const offlinePools = await getOfflineQuestionPools()
+    const matches = offlinePools[filter.tier].filter((question) =>
+      !filter.subElements?.length || filter.subElements.includes(question.subElement),
+    )
+    return matches.slice(0, filter.limit ?? 20)
   }
   return hamstudyApi.getCustomQuizQuestionPool(filter)
 }
@@ -386,9 +546,17 @@ async function reloadAuthoredContentImpl(): Promise<ReloadAuthoredContentResult>
 // TASK: Renderer-side typed wrapper for `progress:save-answer`.
 // HOW CODE SOLVES: Forwards answer events to main process for persistence.
 async function saveAnswerImpl(payload: ProgressAnswerInput): Promise<UserAnswer> {
-  const hamstudyApi = await getHamstudyApiOrThrow()
-  if (!hamstudyApi.saveAnswer) {
-    throw new Error('Progress save IPC bridge is not available.')
+  const hamstudyApi = await getHamstudyApiOrThrow().catch(() => null)
+  if (!hamstudyApi?.saveAnswer) {
+    return {
+      id: Date.now(),
+      questionId: payload.questionId,
+      selectedIndex: payload.selectedIndex,
+      isCorrect: payload.isCorrect,
+      timeTakenMs: payload.timeTakenMs,
+      answeredAt: payload.answeredAt ?? new Date().toISOString(),
+      sessionId: payload.sessionId,
+    }
   }
   return hamstudyApi.saveAnswer(payload)
 }
@@ -504,7 +672,7 @@ async function recordSrsReviewImpl(payload: RecordSrsReviewInput): Promise<SRSCa
 async function getSettingsImpl(): Promise<UserSettings> {
   const hamstudyApi = await getHamstudyApiOrThrow().catch(() => null)
   if (!hamstudyApi?.getSettings) {
-    return DEFAULT_USER_SETTINGS
+    return getLocalSettingsSnapshot()
   }
   return hamstudyApi.getSettings()
 }
@@ -512,9 +680,9 @@ async function getSettingsImpl(): Promise<UserSettings> {
 // TASK: Renderer-side typed wrapper for `settings:save`.
 // HOW CODE SOLVES: Writes settings through preload IPC with shared typing.
 async function saveSettingsImpl(settings: UserSettings): Promise<UserSettings> {
-  const hamstudyApi = await getHamstudyApiOrThrow()
-  if (!hamstudyApi.saveSettings) {
-    throw new Error('Settings save IPC bridge is not available.')
+  const hamstudyApi = await getHamstudyApiOrThrow().catch(() => null)
+  if (!hamstudyApi?.saveSettings) {
+    return setLocalSettingsSnapshot(settings)
   }
   return hamstudyApi.saveSettings(settings)
 }
@@ -522,9 +690,17 @@ async function saveSettingsImpl(settings: UserSettings): Promise<UserSettings> {
 // TASK: Renderer-side typed wrapper for `settings:reset-app-data`.
 // HOW CODE SOLVES: Calls preload bridge reset endpoint and returns summary counts.
 async function resetAppDataImpl(): Promise<ResetAppDataResult> {
-  const hamstudyApi = await getHamstudyApiOrThrow()
-  if (!hamstudyApi.resetAppData) {
-    throw new Error('App reset IPC bridge is not available.')
+  const hamstudyApi = await getHamstudyApiOrThrow().catch(() => null)
+  if (!hamstudyApi?.resetAppData) {
+    setLocalSettingsSnapshot(DEFAULT_USER_SETTINGS)
+    setLocalReviewStateSnapshot({})
+    return {
+      clearedAnswers: 0,
+      clearedSessions: 0,
+      clearedSrsCards: 0,
+      resetQuestionReviewState: 0,
+      clearedSettings: 1,
+    }
   }
   return hamstudyApi.resetAppData()
 }
@@ -533,8 +709,8 @@ async function resetAppDataImpl(): Promise<ResetAppDataResult> {
 // HOW CODE SOLVES: Returns available speech voices when bridge exists,
 //                  otherwise returns a safe empty list in compatibility mode.
 async function listVoicesImpl(): Promise<VoiceOption[]> {
-  const hamstudyApi = await getHamstudyApiOrThrow()
-  if (!hamstudyApi.listVoices) {
+  const hamstudyApi = await getHamstudyApiOrThrow().catch(() => null)
+  if (!hamstudyApi?.listVoices) {
     return []
   }
   return hamstudyApi.listVoices()
@@ -543,8 +719,8 @@ async function listVoicesImpl(): Promise<VoiceOption[]> {
 // TASK: Renderer-side typed wrapper for `settings:voice-speak`.
 // HOW CODE SOLVES: Sends read-aloud text to main speech shell with compatibility fallback.
 async function speakTextImpl(input: VoiceSpeakInput): Promise<VoiceSpeakResult> {
-  const hamstudyApi = await getHamstudyApiOrThrow()
-  if (!hamstudyApi.speakText) {
+  const hamstudyApi = await getHamstudyApiOrThrow().catch(() => null)
+  if (!hamstudyApi?.speakText) {
     return { ok: false, reason: 'not-implemented' }
   }
   return hamstudyApi.speakText(input)
@@ -561,8 +737,8 @@ async function stopSpeechImpl(): Promise<VoiceSpeakResult> {
 }
 
 async function getVoiceDiagnosticsImpl(): Promise<VoiceDiagnostics> {
-  const hamstudyApi = await getHamstudyApiOrThrow()
-  if (!hamstudyApi.getVoiceDiagnostics) {
+  const hamstudyApi = await getHamstudyApiOrThrow().catch(() => null)
+  if (!hamstudyApi?.getVoiceDiagnostics) {
     return {
       platform: 'unknown',
       supported: false,

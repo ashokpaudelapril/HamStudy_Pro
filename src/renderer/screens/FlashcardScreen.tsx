@@ -2,6 +2,7 @@ import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { ipcBridge, type ProgressStats } from '@shared/ipcBridge'
 import type { ExamTier, Question } from '@shared/types'
 import { HintPanel } from '../components/HintPanel'
+import { QuestionFigure } from '../components/QuestionFigure'
 import { ScreenHeader } from '../components/ScreenHeader'
 import { StatPill } from '../components/StatPill'
 import { useSRS } from '../hooks/useSRS'
@@ -393,6 +394,7 @@ export function FlashcardScreen({ onBackToModes, onAskAboutQuestion, onExplainDi
         }
         stats={
           <>
+            <StatPill label="Deck size" value={deckQuestions.length} icon="🗂️" />
             <StatPill label="All-time answers" value={stats?.totalAnswers ?? 0} icon="📊" />
             <StatPill label="All-time correct" value={stats?.correctAnswers ?? 0} icon="✅" />
             <StatPill label="All-time accuracy" value={`${stats?.accuracyPct ?? 0}%`} icon="🎯" />
@@ -492,51 +494,58 @@ export function FlashcardScreen({ onBackToModes, onAskAboutQuestion, onExplainDi
               )
             })}
           </div>
-          <p className="meta">
-            {selectedSubElements.length > 0
-              ? `Deck filter: ${selectedSubElements.join(', ')}`
-              : 'No topic filter selected: deck includes the full tier pool.'}
-          </p>
+          <div className="mode-config-copy">
+            <p className="meta">
+              {selectedSubElements.length > 0
+                ? `Deck filter: ${selectedSubElements.join(', ')}`
+                : 'No topic filter selected: deck includes the full tier pool.'}
+            </p>
+          </div>
         </div>
-        <section className="flashcard-session-summary">
-          <div className="flashcard-summary-row">
-            <div className="flashcard-summary-card">
-              <span className="flashcard-summary-label">Deck size</span>
-              <strong>{deckQuestions.length}</strong>
-              <p>{hasActiveFilters ? 'Filtered study deck' : 'Full tier practice deck'}</p>
+      </section>
+
+      <section className="panel question-session-overview">
+        <div className="question-session-overview-row">
+          <div className="question-session-card">
+            <span className="question-session-label">Deck focus</span>
+            <strong>{deckFocusSummary}</strong>
+            <p>{hasActiveFilters ? 'Built from your selected topics or search filter.' : 'Using the full tier question pool.'}</p>
+          </div>
+          <div className="question-session-card">
+            <span className="question-session-label">Deck order</span>
+            <strong>{randomizeDeck ? 'Randomized' : 'Sequential'}</strong>
+            <p>{randomizeDeck ? 'Better for recall and confidence checks.' : 'Better for methodical topic review.'}</p>
+          </div>
+          <div className="question-session-card">
+            <span className="question-session-label">Search filter</span>
+            <strong>{searchSummary}</strong>
+            <p>Active tier: {formatTierLabel(tier)}</p>
+          </div>
+        </div>
+        {hasQuestion ? (
+          <div className="question-session-progress" aria-label="Flashcard session progress">
+            <div className="question-session-progress-copy">
+              <strong>
+                Card {currentIndex + 1} of {deckQuestions.length}
+              </strong>
+              <span>{progressPct}% through deck</span>
             </div>
-            <div className="flashcard-summary-card">
-              <span className="flashcard-summary-label">Deck order</span>
-              <strong>{randomizeDeck ? 'Randomized' : 'Sequential'}</strong>
-              <p>{randomizeDeck ? 'Good for recall practice' : 'Good for methodical review'}</p>
-            </div>
-            <div className="flashcard-summary-card">
-              <span className="flashcard-summary-label">Search</span>
-              <strong>{searchSummary}</strong>
-              <p>Active tier: {formatTierLabel(tier)}</p>
+            <div
+              className="question-session-progress-bar"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={progressPct}
+            >
+              <span style={{ width: `${progressPct}%` }} />
             </div>
           </div>
-          <p className="meta">Deck focus: {deckFocusSummary}</p>
-          {hasQuestion ? (
-            <div className="flashcard-progress-block" aria-label="Flashcard session progress">
-              <div className="flashcard-progress-copy">
-                <strong>
-                  Card {currentIndex + 1} of {deckQuestions.length}
-                </strong>
-                <span>{progressPct}% through deck</span>
-              </div>
-              <div
-                className="flashcard-progress-bar"
-                role="progressbar"
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={progressPct}
-              >
-                <span style={{ width: `${progressPct}%` }} />
-              </div>
-            </div>
-          ) : null}
-        </section>
+        ) : (
+          <p className="meta">Adjust topics or search to build a fresh study deck.</p>
+        )}
+      </section>
+
+      <section className="panel">
         <div className="action-row">
           <button
             type="button"
@@ -586,6 +595,7 @@ export function FlashcardScreen({ onBackToModes, onAskAboutQuestion, onExplainDi
 
             <article className="flashcard-card">
               <h2>{currentQuestion.questionText}</h2>
+              <QuestionFigure question={currentQuestion} />
 
               {revealed ? (
                 <div className="flashcard-reveal">

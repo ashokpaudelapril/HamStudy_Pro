@@ -2,6 +2,7 @@ import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react
 import { ipcBridge } from '@shared/ipcBridge'
 import type { ExamTier, MasteryState, Question, QuestionBrowserDetail, QuestionBrowserRow } from '@shared/types'
 import { ExplanationPanel } from '../components/ExplanationPanel'
+import { QuestionFigure } from '../components/QuestionFigure'
 import { ScreenHeader } from '../components/ScreenHeader'
 import { StatPill } from '../components/StatPill'
 
@@ -250,11 +251,6 @@ export function QuestionBrowserScreen({ onBackToModes, onAskAboutQuestion, onExp
   function handleUpdateReviewState(input: { starred?: boolean; flagged?: boolean }): void {
     if (!selectedQuestion) return
 
-    if (!enhancedBrowserAvailable) {
-      setError('Review-state toggles need the latest preload bridge. Restart app to enable star/flag persistence.')
-      return
-    }
-
     setDetailLoading(true)
     void ipcBridge
       .updateQuestionReviewState({ questionId: selectedQuestion.id, ...input })
@@ -480,6 +476,7 @@ export function QuestionBrowserScreen({ onBackToModes, onAskAboutQuestion, onExp
               </div>
 
               <h2>{selectedQuestion.questionText}</h2>
+              <QuestionFigure question={selectedQuestion} />
 
               <div className="answers-grid">
                 {selectedQuestion.answers.map((answer, idx) => {

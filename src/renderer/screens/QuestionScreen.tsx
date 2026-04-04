@@ -619,9 +619,14 @@ export function QuestionScreen({ onBackToModes, onAskAboutQuestion, onExplainDif
             </button>
           </div>
         </div>
-        {voiceStatus ? <p className="meta">Voice: {voiceStatus}</p> : null}
-        {authoringStatus ? <p className="meta validation-status-text">{authoringStatus}</p> : null}
-        <p className="meta">Keyboard tip: A/B/C/D select answers, Enter submits, Cmd/Ctrl+R reads aloud, N goes next, and ? opens shortcuts.</p>
+        <div className="mode-config-card">
+          <span className="mode-config-label">Session Status</span>
+          <div className="mode-config-copy">
+            {voiceStatus ? <p className="meta">Voice: {voiceStatus}</p> : null}
+            {authoringStatus ? <p className="meta validation-status-text">{authoringStatus}</p> : null}
+            <p className="meta">Keyboard tip: A/B/C/D select answers, Enter submits, Cmd/Ctrl+R reads aloud, N goes next, and ? opens shortcuts.</p>
+          </div>
+        </div>
       </section>
 
       <section className="panel question-session-overview">
@@ -680,11 +685,27 @@ export function QuestionScreen({ onBackToModes, onAskAboutQuestion, onExplainDif
         {!isSrsBridgeAvailable ? (
           <p className="meta">SRS bridge unavailable in this run. Restart app to enable due-queue features.</p>
         ) : null}
-        <div className="summary-grid">
-          <p>Attempted: {sessionSummary.attempted}</p>
-          <p>Correct: {sessionSummary.correct}</p>
-          <p>Accuracy: {sessionAccuracy}%</p>
-          <p>Avg sec/answer: {averageSeconds}</p>
+        <div className="question-session-overview-row">
+          <div className="question-session-card">
+            <span className="question-session-label">Attempted</span>
+            <strong>{sessionSummary.attempted}</strong>
+            <p>Answers submitted in this practice session.</p>
+          </div>
+          <div className="question-session-card">
+            <span className="question-session-label">Correct</span>
+            <strong>{sessionSummary.correct}</strong>
+            <p>Questions answered correctly so far.</p>
+          </div>
+          <div className="question-session-card">
+            <span className="question-session-label">Accuracy</span>
+            <strong>{sessionAccuracy}%</strong>
+            <p>Current session hit rate.</p>
+          </div>
+          <div className="question-session-card">
+            <span className="question-session-label">Avg Sec/Answer</span>
+            <strong>{averageSeconds}</strong>
+            <p>Average response time across submitted answers.</p>
+          </div>
         </div>
       </section>
 
