@@ -1,6 +1,11 @@
 # Dependencies
 node_modules/
 
+# Optional project docs
+DOCS/
+tests/
+.github/
+
 # Build output
 out/
 dist/
