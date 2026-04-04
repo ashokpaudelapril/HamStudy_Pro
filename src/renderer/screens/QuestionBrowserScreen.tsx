@@ -2,6 +2,7 @@ import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react
 import { ipcBridge } from '@shared/ipcBridge'
 import type { ExamTier, MasteryState, Question, QuestionBrowserDetail, QuestionBrowserRow } from '@shared/types'
 import { ExplanationPanel } from '../components/ExplanationPanel'
+import { ScreenHeader } from '../components/ScreenHeader'
 import { StatPill } from '../components/StatPill'
 
 type QuestionBrowserScreenProps = {
@@ -283,20 +284,22 @@ export function QuestionBrowserScreen({ onBackToModes, onAskAboutQuestion, onExp
 
   return (
     <main className="app-shell">
-      <header className="top-bar">
-        <div>
-          <h1>HamStudy Pro</h1>
-          <p className="subtitle">Question Browser</p>
-        </div>
-        <button type="button" className="ghost-btn" onClick={onBackToModes}>
-          Back to Modes
-        </button>
-        <div className="stats-grid">
-          <StatPill label="Tier" value={tier} icon="🤖" />
-          <StatPill label="Results" value={questionRows.length} icon="🗂️" />
-          <StatPill label="Topics" value={availableSubElements.length} icon="🧩" />
-        </div>
-      </header>
+      <ScreenHeader
+        title="HamStudy Pro"
+        subtitle="Question Browser"
+        actions={
+          <button type="button" className="ghost-btn" onClick={onBackToModes}>
+            Back to Modes
+          </button>
+        }
+        stats={
+          <>
+            <StatPill label="Tier" value={tier} icon="📚" />
+            <StatPill label="Results" value={questionRows.length} icon="🗂️" />
+            <StatPill label="Topics" value={availableSubElements.length} icon="🧩" />
+          </>
+        }
+      />
 
       <section className="panel mode-config-panel">
         <div className="mode-config-card">

@@ -2,6 +2,7 @@ import { type FormEvent, useCallback, useEffect, useState } from 'react'
 import { ipcBridge, type ProgressStats } from '@shared/ipcBridge'
 import type { ExamTier, Question } from '@shared/types'
 import { AnswerButton } from '../components/AnswerButton'
+import { ScreenHeader } from '../components/ScreenHeader'
 import { StatPill } from '../components/StatPill'
 import { useSRS } from '../hooks/useSRS'
 
@@ -270,21 +271,23 @@ export function SpeedRoundScreen({
 
   return (
     <main className="app-shell">
-      <header className="top-bar">
-        <div>
-          <h1>HamStudy Pro</h1>
-          <p className="subtitle">{formatTierLabel(tier)} Speed Round</p>
-        </div>
-        <button type="button" className="ghost-btn" onClick={onBackToModes}>
-          Back to Modes
-        </button>
-        <div className="stats-grid">
-          <StatPill label="Round attempts" value={roundStats.attempted} />
-          <StatPill label="Round accuracy" value={`${roundAccuracy}%`} />
-          <StatPill label="Timeouts" value={roundStats.timedOut} />
-          <StatPill label="Avg sec/answer" value={avgSeconds} />
-        </div>
-      </header>
+      <ScreenHeader
+        title="HamStudy Pro"
+        subtitle={`${formatTierLabel(tier)} Speed Round`}
+        actions={
+          <button type="button" className="ghost-btn" onClick={onBackToModes}>
+            Back to Modes
+          </button>
+        }
+        stats={
+          <>
+            <StatPill label="Round Attempts" value={roundStats.attempted} />
+            <StatPill label="Round Accuracy" value={`${roundAccuracy}%`} />
+            <StatPill label="Timeouts" value={roundStats.timedOut} />
+            <StatPill label="Avg Sec/Answer" value={avgSeconds} />
+          </>
+        }
+      />
 
       <section className="panel mode-config-panel">
         <div className="mode-config-card">

@@ -2,6 +2,7 @@ import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { ipcBridge, type ProgressStats } from '@shared/ipcBridge'
 import type { ExamTier, Question } from '@shared/types'
 import { HintPanel } from '../components/HintPanel'
+import { ScreenHeader } from '../components/ScreenHeader'
 import { StatPill } from '../components/StatPill'
 import { useSRS } from '../hooks/useSRS'
 
@@ -382,20 +383,22 @@ export function FlashcardScreen({ onBackToModes, onAskAboutQuestion, onExplainDi
 
   return (
     <main className="app-shell">
-      <header className="top-bar">
-        <div>
-          <h1>HamStudy Pro</h1>
-          <p className="subtitle">{formatTierLabel(tier)} Flashcards</p>
-        </div>
-        <button type="button" className="ghost-btn" onClick={onBackToModes}>
-          Back to Modes
-        </button>
-        <div className="stats-grid">
-          <StatPill label="All-time answers" value={stats?.totalAnswers ?? 0} />
-          <StatPill label="All-time correct" value={stats?.correctAnswers ?? 0} />
-          <StatPill label="All-time accuracy" value={`${stats?.accuracyPct ?? 0}%`} />
-        </div>
-      </header>
+      <ScreenHeader
+        title="HamStudy Pro"
+        subtitle={`${formatTierLabel(tier)} Flashcards`}
+        actions={
+          <button type="button" className="ghost-btn" onClick={onBackToModes}>
+            Back to Modes
+          </button>
+        }
+        stats={
+          <>
+            <StatPill label="All-time answers" value={stats?.totalAnswers ?? 0} icon="📊" />
+            <StatPill label="All-time correct" value={stats?.correctAnswers ?? 0} icon="✅" />
+            <StatPill label="All-time accuracy" value={`${stats?.accuracyPct ?? 0}%`} icon="🎯" />
+          </>
+        }
+      />
 
       <section className="panel mode-config-panel">
         <div className="mode-config-card">
@@ -471,7 +474,7 @@ export function FlashcardScreen({ onBackToModes, onAskAboutQuestion, onExplainDi
           </div>
         </div>
 
-        <div className="mode-config-card">
+        <div className="mode-config-card flashcard-topics-card">
           <span className="mode-config-label">Topics</span>
           <div className="custom-sub-elements">
             {availableSubElements.map((subElement) => {

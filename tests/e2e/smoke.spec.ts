@@ -1,5 +1,11 @@
 import { test, expect } from '@playwright/test'
 
+async function openModeFromHome(page: Parameters<typeof test>[0]['page'], label: string): Promise<void> {
+  await page.goto('/')
+  await page.waitForLoadState('networkidle')
+  await page.locator(`button:has-text("${label}")`).first().click()
+}
+
 // TASK: Smoke test for basic app navigation and rendering.
 // HOW CODE SOLVES: Verifies that the main app window loads, displays the
 //                  study mode selector, and can navigate between modes.
@@ -175,6 +181,24 @@ test.describe('HamStudy Pro — E2E Smoke Tests', () => {
 })
 
 test.describe('Navigation and deep linking', () => {
+  test('opening a mode resets scroll to the top of the screen', async ({ page }) => {
+    await page.goto('/')
+    await page.waitForLoadState('networkidle')
+
+    await page.evaluate(() => {
+      window.scrollTo(0, document.body.scrollHeight)
+    })
+
+    const homeScroll = await page.evaluate(() => window.scrollY)
+    expect(homeScroll).toBeGreaterThan(0)
+
+    await page.locator('button:has-text("Flashcard Mode")').first().click()
+    await expect(page.locator('text=Back to Modes')).toBeVisible()
+
+    const modeScroll = await page.evaluate(() => window.scrollY)
+    expect(modeScroll).toBeLessThanOrEqual(4)
+  })
+
   test('direct navigation to achievements works', async ({ page }) => {
     // If the app supports deep linking to achievements, test it
     await page.goto('/achievements').catch(() => {
@@ -212,6 +236,48 @@ test.describe('Navigation and deep linking', () => {
         expect(page.url()).toBeDefined()
       }
     }
+  })
+})
+
+test.describe('Focused regression checks', () => {
+  test('flashcard mode loads a usable study screen', async ({ page }) => {
+    await openModeFromHome(page, 'Flashcard Mode')
+
+    await expect(page.locator('text=Back to Modes')).toBeVisible()
+    await expect(page.locator('text=Randomize deck order')).toBeVisible()
+    await expect(page.getByPlaceholder('Search flashcards by question, ID, reference, or topic')).toBeVisible()
+
+    const revealAnswer = page.getByRole('button', { name: 'Reveal Answer' })
+    const emptyState = page.getByRole('heading', { name: 'No flashcards match this deck setup' })
+
+    await expect(revealAnswer.or(emptyState)).toBeVisible()
+  })
+
+  test('settings danger zone explains that reset wipes all app data', async ({ page }) => {
+    await openModeFromHome(page, 'Settings')
+
+    await expect(page.locator('text=Danger Zone')).toBeVisible()
+    await expect(page.locator('text=Reset Everything wipes all study data and app state for a completely fresh start.')).toBeVisible()
+    await expect(page.locator('text=This includes progress history, accuracy stats, SRS reviews, flagged/starred questions, saved mnemonics, chat history, and saved settings.')).toBeVisible()
+  })
+
+  test('dashboard readiness calibration bars render with visible fill', async ({ page }) => {
+    await openModeFromHome(page, 'Dashboard')
+
+    const fills = page.locator('.readiness-mini-fill')
+    const noHistory = page.locator('text=No tier history yet.')
+    await expect(fills.first().or(noHistory)).toBeVisible()
+
+    if ((await fills.count()) === 0) {
+      return
+    }
+
+    const widths = await fills.evaluateAll((nodes) =>
+      nodes.map((node) => Math.round(node.getBoundingClientRect().width)),
+    )
+
+    expect(widths.length).toBeGreaterThan(0)
+    expect(widths.some((width) => width > 0)).toBeTruthy()
   })
 })
 

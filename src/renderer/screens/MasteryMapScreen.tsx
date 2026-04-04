@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ipcBridge } from '@shared/ipcBridge'
 import type { ExamTier, QuestionBrowserRow } from '@shared/types'
+import { ScreenHeader } from '../components/ScreenHeader'
 import { StatPill } from '../components/StatPill'
 
 type MasteryMapScreenProps = {
@@ -99,21 +100,23 @@ export function MasteryMapScreen({ onBackToModes, onOpenQuestionBrowser }: Maste
 
   return (
     <main className="app-shell">
-      <header className="top-bar">
-        <div>
-          <h1>HamStudy Pro</h1>
-          <p className="subtitle">Mastery Map</p>
-        </div>
-        <button type="button" className="ghost-btn" onClick={onBackToModes}>
-          Back to Modes
-        </button>
-        <div className="stats-grid">
-          <StatPill label="Tier" value={tier} />
-          <StatPill label="Questions" value={rows.length} />
-          <StatPill label="Mastered" value={`${masteryCounts.mastered}`} />
-          <StatPill label="Coverage" value={`${Number((masteryPct.known + masteryPct.mastered).toFixed(1))}%`} />
-        </div>
-      </header>
+      <ScreenHeader
+        title="HamStudy Pro"
+        subtitle="Mastery Map"
+        actions={
+          <button type="button" className="ghost-btn" onClick={onBackToModes}>
+            Back to Modes
+          </button>
+        }
+        stats={
+          <>
+            <StatPill label="Tier" value={tier} />
+            <StatPill label="Questions" value={rows.length} />
+            <StatPill label="Mastered" value={`${masteryCounts.mastered}`} />
+            <StatPill label="Coverage" value={`${Number((masteryPct.known + masteryPct.mastered).toFixed(1))}%`} />
+          </>
+        }
+      />
 
       <section className="panel mastery-controls-panel">
         <div className="exam-tier-buttons">

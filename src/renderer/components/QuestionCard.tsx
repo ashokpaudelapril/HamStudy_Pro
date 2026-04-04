@@ -25,13 +25,14 @@ export function QuestionCard({
   onSelectAnswer,
 }: QuestionCardProps) {
   const refId = `ref-${question.id}`
+  const promptId = `prompt-${question.id}`
 
   return (
     <>
       <p className="meta">
         {question.id} • Question {currentIndex + 1} of {total}
       </p>
-      <h2>{question.questionText}</h2>
+      <h2 id={promptId}>{question.questionText}</h2>
       <p className="meta" id={refId}>Reference: {question.refs}</p>
 
       <fieldset className="answers-grid" disabled={submitted || saving}>
@@ -39,7 +40,7 @@ export function QuestionCard({
         <div
           className="answers-grid"
           role="radiogroup"
-          aria-labelledby="question-prompt"
+          aria-labelledby={promptId}
           aria-describedby={refId}
         >
           {question.answers.map((answer, idx) => {

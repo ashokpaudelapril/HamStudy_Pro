@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { ipcBridge } from '@shared/ipcBridge'
 import type { EarnedBadge } from '@shared/types'
 import { AchievementBadge } from '../components/AchievementBadge'
+import { ScreenHeader } from '../components/ScreenHeader'
+import { StatPill } from '../components/StatPill'
 import {
   type AchievementFilter,
   filterBadges,
@@ -62,17 +64,22 @@ export function AchievementsScreen({ onBackToModes }: { onBackToModes: () => voi
 
   return (
     <main className="app-shell">
-      <header className="top-bar">
-        <div>
-          <h1>Achievements</h1>
-          <p className="subtitle">
-            {loading ? 'Loading…' : `${unlockedCount} / ${badges.length} earned • ${completionPct}% complete`}
-          </p>
-        </div>
-        <button type="button" className="ghost-btn" onClick={onBackToModes}>
-          Back to Modes
-        </button>
-      </header>
+      <ScreenHeader
+        title="HamStudy Pro"
+        subtitle={loading ? 'Achievements' : `Achievements • ${unlockedCount} / ${badges.length} earned`}
+        actions={
+          <button type="button" className="ghost-btn" onClick={onBackToModes}>
+            Back to Modes
+          </button>
+        }
+        stats={
+          <>
+            <StatPill label="Unlocked" value={unlockedCount} icon="🏆" />
+            <StatPill label="Locked" value={lockedCount} icon="🔒" />
+            <StatPill label="Completion" value={`${completionPct}%`} icon="📈" />
+          </>
+        }
+      />
 
       <section className="panel achievements-summary-panel">
         <div className="achievement-summary-card">

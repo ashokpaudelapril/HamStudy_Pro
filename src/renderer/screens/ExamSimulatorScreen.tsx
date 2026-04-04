@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ipcBridge } from '@shared/ipcBridge'
 import type { ExamTier, Question } from '@shared/types'
 import { QuestionCard } from '../components/QuestionCard'
+import { ScreenHeader } from '../components/ScreenHeader'
 import { StatPill } from '../components/StatPill'
 
 type ExamSimulatorScreenProps = {
@@ -503,25 +504,27 @@ export function ExamSimulatorScreen({
 
   return (
     <main className="app-shell">
-      <header className="top-bar">
-        <div>
-          <h1>HamStudy Pro</h1>
-          <p className="subtitle">Full Exam Simulator</p>
-        </div>
-        <button
-          type="button"
-          className="ghost-btn"
-          onClick={handleBackToModes}
-        >
-          Back to Modes
-        </button>
-        <div className="stats-grid">
-          <StatPill label="Tier" value={formatTierLabel(tier)} />
-          <StatPill label="Questions" value={examConfig.questionCount} />
-          <StatPill label="Timer" value={formatCountdown(remainingSeconds || examConfig.durationSeconds)} />
-          <StatPill label="Score" value={phase === 'finished' ? `${scorePct}%` : 'Pending'} />
-        </div>
-      </header>
+      <ScreenHeader
+        title="HamStudy Pro"
+        subtitle="Full Exam Simulator"
+        actions={
+          <button
+            type="button"
+            className="ghost-btn"
+            onClick={handleBackToModes}
+          >
+            Back to Modes
+          </button>
+        }
+        stats={
+          <>
+            <StatPill label="Tier" value={formatTierLabel(tier)} icon="📚" />
+            <StatPill label="Questions" value={examConfig.questionCount} icon="🧾" />
+            <StatPill label="Timer" value={formatCountdown(remainingSeconds || examConfig.durationSeconds)} icon="⏱️" />
+            <StatPill label="Score" value={phase === 'finished' ? `${scorePct}%` : 'Pending'} icon="🎯" />
+          </>
+        }
+      />
 
       {phase === 'config' ? (
         <section className="panel mode-config-panel exam-config-panel">

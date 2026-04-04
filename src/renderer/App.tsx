@@ -116,6 +116,16 @@ function App() {
     }
   }, [])
 
+  useEffect(() => {
+    // TASK: Start every mode at the top of the screen instead of preserving the
+    //       previous screen's scroll position.
+    // HOW CODE SOLVES: Resets both window and document scroll containers whenever
+    //                  the active top-level mode changes in this single-page renderer.
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+    document.documentElement.scrollTop = 0
+    document.body.scrollTop = 0
+  }, [mode])
+
   // TASK: Open Tutor Chat with optional active-question context from another screen.
   // HOW CODE SOLVES: Stores the source mode plus selected FCC question metadata
   //                  so Tutor Chat can inject `questionId` into IPC requests and route back cleanly.

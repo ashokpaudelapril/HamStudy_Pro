@@ -271,8 +271,7 @@
       "3.5 MHz is in the HF range, but for this question it is not the frequency with the lowest allowed MPE value. The strictest limit among the listed options is at 50 MHz.",
       "",
       "440 MHz may feel 'more energetic' because it is higher in frequency, but the FCC exposure limits are based on actual body-coupling and absorption characteristics, not just whichever number is larger.",
-      "1296 MHz is much higher in frequency, but it is not the most restrictive choice in this group. The correct answer is the one with the lowest allowed exposure limit, which here is 50 MHz.",
-      ""
+      "1296 MHz is much higher in frequency, but it is not the most restrictive choice in this group. The correct answer is the one with the lowest allowed exposure limit, which here is 50 MHz."
     ]
   },
   "T0C03": {
@@ -327,8 +326,7 @@
       "Electrocution suggests a conventional power-line or mains-current hazard, which is not the best match here. The immediate risk from antenna contact during transmission is usually localized RF heating and skin burn.",
       "",
       "Radiation poisoning is associated with ionizing radiation exposure, not normal RF from amateur transmitters. This question is about RF-contact heating, not radioactivity.",
-      "'All these' fails because the listed hazards are not all correct. The specific, direct hazard named in the question is an RF burn to the skin.",
-      ""
+      "'All these' fails because the listed hazards are not all correct. The specific, direct hazard named in the question is an RF burn to the skin."
     ]
   },
   "T0C08": {
@@ -339,8 +337,7 @@
       "",
       "Relocating the transmitter itself does little if the antenna stays in the same place, because the antenna is what radiates most of the RF energy. Exposure is tied mainly to the antenna field, not the radio cabinet location.",
       "Increasing duty cycle makes average RF exposure worse, not better, because the transmitter is on more of the time. That moves you toward the limit, not away from it.",
-      "'All these' cannot be correct because increasing duty cycle does not reduce exposure. The real exposure-reduction action here is relocating antennas.",
-      ""
+      "'All these' cannot be correct because increasing duty cycle does not reduce exposure. The real exposure-reduction action here is relocating antennas."
     ]
   },
   "T0C09": {
@@ -351,8 +348,7 @@
       "You do not stay compliant just by notifying the FCC about station changes. Compliance comes from making sure the actual RF exposure remains within limits.",
       "",
       "Low SWR is good for efficient operation, but it does not by itself prove RF safety compliance. A station can have low SWR and still create too much exposure in a nearby occupied area.",
-      "'All these' does not work because informing the FCC and checking SWR are not the required compliance method here. The key action is re-evaluating the station after relevant changes.",
-      ""
+      "'All these' does not work because informing the FCC and checking SWR are not the required compliance method here. The key action is re-evaluating the station after relevant changes."
     ]
   },
   "T0C10": {
@@ -363,8 +359,7 @@
       "",
       "Peak exposure may matter in some engineering contexts, but the question is asking why duty cycle is part of the RF safety calculation. The FCC exposure framework here is based on average exposure.",
       "Feed line loss can affect delivered power, but that is not what duty cycle describes. Duty cycle is about how long the transmitter is on during the averaging interval.",
-      "Thermal effects are part of the overall reason exposure matters, but duty cycle itself does not specifically 'take into account the final amplifier.' It is simply a measure that changes the average exposure calculation.",
-      ""
+      "Thermal effects are part of the overall reason exposure matters, but duty cycle itself does not specifically 'take into account the final amplifier.' It is simply a measure that changes the average exposure calculation."
     ]
   },
   "T0C11": {
@@ -375,8 +370,7 @@
       "This choice talks about power levels, not time. Duty cycle is not the spread between low and high output values.",
       "PEP versus average power is a different transmitter concept. Duty cycle is specifically the fraction of the averaging time when the transmitter is on.",
       "",
-      "This is the exact opposite of the definition. Duty cycle counts transmitting time, not the idle time when the transmitter is off.",
-      ""
+      "This is the exact opposite of the definition. Duty cycle counts transmitting time, not the idle time when the transmitter is off."
     ]
   },
   "T0C12": {
@@ -387,8 +381,7 @@
       "",
       "An RF dosimeter is not the defining difference between RF and ionizing radiation. The real distinction is the energy per photon and whether it can ionize atoms or damage DNA directly.",
       "RF radiation is not limited to a range of only a few feet. Depending on power, frequency, antenna, and environment, radio signals can travel very far.",
-      "This is too absolute and therefore wrong. RF radiation is not 'perfectly safe' under all conditions; excessive exposure can still create harmful heating effects.",
-      ""
+      "This is too absolute and therefore wrong. RF radiation is not 'perfectly safe' under all conditions; excessive exposure can still create harmful heating effects."
     ]
   },
   "T0C13": {
@@ -399,8 +392,7 @@
       "The FCC sets the exposure rules and can enforce them, but it is not standing at your station making sure you comply day to day. That responsibility belongs to the station licensee.",
       "",
       "People near an antenna are not the ones responsible for calculating or enforcing compliance. The person operating or controlling the station has that duty.",
-      "Local zoning boards may regulate land use or tower placement, but they do not carry the FCC RF compliance responsibility for your station.",
-      ""
+      "Local zoning boards may regulate land use or tower placement, but they do not carry the FCC RF compliance responsibility for your station."
     ]
   },
   "T1A01": {
@@ -793,7 +785,7 @@
     "explanation": "Broadcasting is the prohibited one-way transmission in this question. Amateur radio is not meant to be a broadcast service for the general public, but certain limited one-way transmissions such as Morse code practice, telemetry, and telecommand are allowed. The rule protects amateur radio from turning into a personal broadcast outlet.",
     "mnemonic": "One-way is not always banned in ham radio, but broadcasting is. Think 'practice yes, public broadcast no.'",
     "why_wrong": [
-      "One-way transmissions are not prohibited in all circumstances because the rules allow several specific exceptions. That is why this answer is too broad.",
+      "One-way transmissions are not prohibited in all circumstances because the rules allow several specific exceptions. That makes this answer too broad.",
       "International Morse code practice is one of the accepted one-way transmission uses in amateur radio, so it is not the prohibited case here.",
       "Telecommand and telemetry are also recognized exceptions for one-way amateur transmissions. That makes them the opposite of the prohibited broadcasting choice.",
       ""
@@ -3689,7 +3681,7 @@
       "Signal strength and noise are usually checked with receiver indicators or specialized test gear, not a basic multimeter.",
       "Impedance and reactance are not the usual direct measurements of a basic multimeter.",
       "",
-      "Not all of the listed measurements are standard multimeter functions, so 'all' is too broad."
+      "Not all of the listed measurements are standard multimeter functions, so `all` is too broad."
     ]
   },
   "T7D08": {
@@ -3808,7 +3800,7 @@
     "mnemonic": "SSB saves space: narrower bandwidth.",
     "why_wrong": [
       "SSB is usually harder, not easier, to tune correctly compared with FM.",
-      "The key comparison here is bandwidth; saying SSB is less susceptible to interference is too broad and not the tested point.",
+      "The key comparison here is bandwidth; saying SSB is less susceptible to interference is broader than the tested point.",
       "",
       "Because some of the other statements are not reliably true, 'all' cannot be correct."
     ]
@@ -3876,7 +3868,7 @@
       "Signal strength of received signals is not the usual core purpose of telemetry beacons.",
       "Precise time of day is not the typical information this question is aiming at.",
       "",
-      "Because the other listed items are not the main telemetry answer here, 'all' is too broad."
+      "Because the other listed items are not the main telemetry answer here, `all` is too broad."
     ]
   },
   "T8B02": {

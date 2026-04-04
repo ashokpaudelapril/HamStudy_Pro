@@ -23,6 +23,72 @@ import type {
   VoiceSpeakResult,
 } from './types'
 
+type OfflineJsonPoolQuestion = {
+  id: string
+  correct: number
+  refs: string
+  question: string
+  answers: string[]
+}
+
+const DEFAULT_USER_SETTINGS: UserSettings = {
+  theme: 'system',
+  visualTheme: 'signal-lab',
+  dailyGoalMinutes: 20,
+  aiProvider: null,
+  textSize: 'medium',
+  voiceId: null,
+  voiceRate: 1,
+}
+
+let offlineQuestionPoolsPromise: Promise<Record<'technician' | 'general' | 'extra', Question[]>> | null = null
+
+function parseIdToSubElementAndGroup(id: string): { subElement: string; groupId: string } {
+  const tierLetter = id[0] as 'T' | 'G' | 'E'
+  const subDigit = id[1]
+  const groupLetter = id[2]
+  return {
+    subElement: `${tierLetter}${subDigit}`,
+    groupId: `${tierLetter}${subDigit}${groupLetter}`,
+  }
+}
+
+function mapOfflinePoolQuestion(question: OfflineJsonPoolQuestion, tier: 'technician' | 'general' | 'extra'): Question {
+  const { subElement, groupId } = parseIdToSubElementAndGroup(question.id)
+  return {
+    id: question.id,
+    examTier: tier,
+    subElement,
+    groupId,
+    questionText: question.question,
+    answers: question.answers,
+    correctIndex: question.correct,
+    refs: question.refs,
+  }
+}
+
+async function getOfflineQuestionPools(): Promise<Record<'technician' | 'general' | 'extra', Question[]>> {
+  if (!offlineQuestionPoolsPromise) {
+    offlineQuestionPoolsPromise = Promise.all([
+      import('../../data/technician.json'),
+      import('../../data/general.json'),
+      import('../../data/extra.json'),
+    ]).then(([technicianModule, generalModule, extraModule]) => ({
+      technician: (technicianModule.default as OfflineJsonPoolQuestion[]).map((question) =>
+        mapOfflinePoolQuestion(question, 'technician'),
+      ),
+      general: (generalModule.default as OfflineJsonPoolQuestion[]).map((question) =>
+        mapOfflinePoolQuestion(question, 'general'),
+      ),
+      extra: (extraModule.default as OfflineJsonPoolQuestion[]).map((question) =>
+        mapOfflinePoolQuestion(question, 'extra'),
+      ),
+    }))
+  }
+
+  return offlineQuestionPoolsPromise
+}
+
 export interface QuestionPoolFilter {
   tier: 'technician' | 'general' | 'extra'
 }
@@ -225,9 +291,10 @@ async function getHamstudyApiOrThrow(): Promise<HamstudyApi> {
 // HOW CODE SOLVES: Delegates the call to the preload bridge on `window.hamstudy`
 //                   to keep DB/IPCs in the main process and preserve security.
 async function getQuestionPoolImpl(filter: QuestionPoolFilter): Promise<Question[]> {
-  const hamstudyApi = await getHamstudyApiOrThrow()
-  if (!hamstudyApi.getQuestionPool) {
-    throw new Error('Question IPC bridge is not available.')
+  const hamstudyApi = await getHamstudyApiOrThrow().catch(() => null)
+  if (!hamstudyApi?.getQuestionPool) {
+    const offlinePools = await getOfflineQuestionPools()
+    return offlinePools[filter.tier]
   }
   return hamstudyApi.getQuestionPool(filter)
 }
@@ -235,9 +302,12 @@ async function getQuestionPoolImpl(filter: QuestionPoolFilter): Promise<Question
 // TASK: Renderer-side typed wrapper for `questions:get-by-id`.
 // HOW CODE SOLVES: Uses the preload bridge contract to fetch one question by ID.
 async function getQuestionByIdImpl(questionId: string): Promise<Question | null> {
-  const hamstudyApi = await getHamstudyApiOrThrow()
-  if (!hamstudyApi.getQuestionById) {
-    throw new Error('Question detail IPC bridge is not available.')
+  const hamstudyApi = await getHamstudyApiOrThrow().catch(() => null)
+  if (!hamstudyApi?.getQuestionById) {
+    const offlinePools = await getOfflineQuestionPools()
+    return Object.values(offlinePools)
+      .flat()
+      .find((question) => question.id === questionId) ?? null
   }
   return hamstudyApi.getQuestionById(questionId)
 }
@@ -326,9 +396,14 @@ async function saveAnswerImpl(payload: ProgressAnswerInput): Promise<UserAnswer>
 // TASK: Renderer-side typed wrapper for `progress:get-stats`.
 // HOW CODE SOLVES: Loads aggregate progress metrics from persisted answers.
 async function getProgressStatsImpl(): Promise<ProgressStats> {
-  const hamstudyApi = await getHamstudyApiOrThrow()
-  if (!hamstudyApi.getProgressStats) {
-    throw new Error('Progress stats IPC bridge is not available.')
+  const hamstudyApi = await getHamstudyApiOrThrow().catch(() => null)
+  if (!hamstudyApi?.getProgressStats) {
+    return {
+      totalAnswers: 0,
+      correctAnswers: 0,
+      accuracyPct: 0,
+      uniqueQuestionsAnswered: 0,
+    }
   }
   return hamstudyApi.getProgressStats()
 }
@@ -427,9 +502,9 @@ async function recordSrsReviewImpl(payload: RecordSrsReviewInput): Promise<SRSCa
 // TASK: Renderer-side typed wrapper for `settings:get`.
 // HOW CODE SOLVES: Reads persisted settings through preload IPC surface.
 async function getSettingsImpl(): Promise<UserSettings> {
-  const hamstudyApi = await getHamstudyApiOrThrow()
-  if (!hamstudyApi.getSettings) {
-    throw new Error('Settings read IPC bridge is not available.')
+  const hamstudyApi = await getHamstudyApiOrThrow().catch(() => null)
+  if (!hamstudyApi?.getSettings) {
+    return DEFAULT_USER_SETTINGS
   }
   return hamstudyApi.getSettings()
 }

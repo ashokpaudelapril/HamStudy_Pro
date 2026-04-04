@@ -6,6 +6,7 @@ import { KeyboardShortcutsOverlay } from '../components/KeyboardShortcutsOverlay
 import { ExplanationPanel } from '../components/ExplanationPanel'
 import { HintPanel } from '../components/HintPanel'
 import { QuestionCard } from '../components/QuestionCard'
+import { ScreenHeader } from '../components/ScreenHeader'
 import { useSRS } from '../hooks/useSRS'
 import { StatPill } from '../components/StatPill'
 
@@ -514,25 +515,25 @@ export function QuestionScreen({ onBackToModes, onAskAboutQuestion, onExplainDif
 
   return (
     <main className="app-shell">
-      <header className="top-bar">
-        <div>
-          <h1>HamStudy Pro</h1>
-          <p className="subtitle">
-            {isDueQueueMode ? `${formatTierLabel(tier)} Due Today` : `${formatTierLabel(tier)} Quick Practice`}
-          </p>
-        </div>
-        {onBackToModes ? (
-          <button type="button" className="ghost-btn" onClick={onBackToModes}>
-            Back to Modes
-          </button>
-        ) : null}
-        <div className="stats-grid">
+      <ScreenHeader
+        title="HamStudy Pro"
+        subtitle={isDueQueueMode ? `${formatTierLabel(tier)} Due Today` : `${formatTierLabel(tier)} Quick Practice`}
+        actions={
+          onBackToModes ? (
+            <button type="button" className="ghost-btn" onClick={onBackToModes}>
+              Back to Modes
+            </button>
+          ) : null
+        }
+        stats={
+          <>
           <StatPill label="All-time answers" value={stats?.totalAnswers ?? 0} icon="📊" />
           <StatPill label="All-time correct" value={stats?.correctAnswers ?? 0} icon="✅" />
           <StatPill label="All-time accuracy" value={`${stats?.accuracyPct ?? 0}%`} icon="🎯" />
           <StatPill label="SRS due today" value={dueTodayCount} icon="⏳" />
-        </div>
-      </header>
+          </>
+        }
+      />
 
       <section className="panel mode-config-panel">
         <div className="mode-config-card">

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ipcBridge, type ProgressStats } from '@shared/ipcBridge'
 import type { ExamTier, Question } from '@shared/types'
 import { QuestionCard } from '../components/QuestionCard'
+import { ScreenHeader } from '../components/ScreenHeader'
 import { StatPill } from '../components/StatPill'
 import { useSRS } from '../hooks/useSRS'
 
@@ -252,28 +253,30 @@ export function CustomQuizScreen({ onBackToModes, onAskAboutQuestion, onExplainD
 
   return (
     <main className="app-shell">
-      <header className="top-bar">
-        <div>
-          <h1>HamStudy Pro</h1>
-          <p className="subtitle">Custom Quiz</p>
-        </div>
-        <div className="action-row">
-          {phase === 'quiz' ? (
-            <button type="button" className="ghost-btn" onClick={handleBackToBuilder}>
-              Back to Builder
+      <ScreenHeader
+        title="HamStudy Pro"
+        subtitle="Custom Quiz"
+        actions={
+          <>
+            {phase === 'quiz' ? (
+              <button type="button" className="ghost-btn" onClick={handleBackToBuilder}>
+                Back to Builder
+              </button>
+            ) : null}
+            <button type="button" className="ghost-btn" onClick={onBackToModes}>
+              Back to Modes
             </button>
-          ) : null}
-          <button type="button" className="ghost-btn" onClick={onBackToModes}>
-            Back to Modes
-          </button>
-        </div>
-        <div className="stats-grid">
-          <StatPill label="Session attempted" value={sessionSummary.attempted} />
-          <StatPill label="Session accuracy" value={`${accuracy}%`} />
-          <StatPill label="Global answers" value={globalStats?.totalAnswers ?? 0} />
-          <StatPill label="Global accuracy" value={`${globalStats?.accuracyPct ?? 0}%`} />
-        </div>
-      </header>
+          </>
+        }
+        stats={
+          <>
+            <StatPill label="Session Attempted" value={sessionSummary.attempted} />
+            <StatPill label="Session Accuracy" value={`${accuracy}%`} />
+            <StatPill label="Global Answers" value={globalStats?.totalAnswers ?? 0} />
+            <StatPill label="Global Accuracy" value={`${globalStats?.accuracyPct ?? 0}%`} />
+          </>
+        }
+      />
 
       {phase === 'builder' ? (
         <section className="panel custom-builder-panel">

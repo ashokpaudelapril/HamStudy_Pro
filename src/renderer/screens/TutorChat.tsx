@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ipcBridge } from '@shared/ipcBridge'
 import type { ChatMessage } from '@shared/types'
+import { ScreenHeader } from '../components/ScreenHeader'
 
 type TutorChatScreenProps = {
   onBackToModes: () => void
@@ -181,22 +182,20 @@ export function TutorChatScreen({ onBackToModes, chatContext }: TutorChatScreenP
 
   return (
     <div className="tutor-chat-screen">
-      <header className="top-bar">
-        <div>
-          <h1>Elmer AI Tutor</h1>
-          <p className="subtitle">
-            {chatContext?.questionLabel ? `Asking about ${chatContext.questionLabel}` : 'Ask questions and get hints'}
-          </p>
-        </div>
-        <div className="action-row">
-          <button type="button" className="ghost-btn" onClick={handleCopyMarkdown} disabled={messages.length === 0}>
-            Copy Markdown
-          </button>
-          <button type="button" className="ghost-btn" onClick={onBackToModes}>
-            Back
-          </button>
-        </div>
-      </header>
+      <ScreenHeader
+        title="Elmer AI Tutor"
+        subtitle={chatContext?.questionLabel ? `Asking about ${chatContext.questionLabel}` : 'Ask questions and get hints'}
+        actions={
+          <>
+            <button type="button" className="ghost-btn" onClick={handleCopyMarkdown} disabled={messages.length === 0}>
+              Copy Markdown
+            </button>
+            <button type="button" className="ghost-btn" onClick={onBackToModes}>
+              Back
+            </button>
+          </>
+        }
+      />
       {chatContext?.questionId ? (
         <div className="panel">
           <p className="meta">

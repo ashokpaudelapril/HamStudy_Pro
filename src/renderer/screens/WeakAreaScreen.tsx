@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ipcBridge, type ProgressStats } from '@shared/ipcBridge'
 import type { ExamTier, Question } from '@shared/types'
 import { QuestionCard } from '../components/QuestionCard'
+import { ScreenHeader } from '../components/ScreenHeader'
 import { StatPill } from '../components/StatPill'
 import { useSRS } from '../hooks/useSRS'
 
@@ -60,6 +61,34 @@ export function WeakAreaScreen({ onBackToModes, onAskAboutQuestion, onExplainDif
     const set = new Set(questions.map((q) => q.subElement))
     return Array.from(set)
   }, [questions])
+
+  const weakTopicCardTitle = useMemo(() => {
+    if (weakSubElements.length <= 1) {
+      return 'Targeted Topic'
+    }
+
+    return 'Targeted Topics'
+  }, [weakSubElements])
+
+  const weakTopicSummary = useMemo(() => {
+    if (weakSubElements.length === 0) {
+      return 'Loading weak-topic focus...'
+    }
+
+    return weakSubElements.join(', ')
+  }, [weakSubElements])
+
+  const weakTopicSupportCopy = useMemo(() => {
+    if (weakSubElements.length === 0) {
+      return 'The drill is analyzing your answer history to choose what needs work most.'
+    }
+
+    if (weakSubElements.length === 1) {
+      return 'This pass is concentrated on one weak sub-element so you can improve it quickly.'
+    }
+
+    return `${weakSubElements.length} weak sub-elements are currently included in this drill.`
+  }, [weakSubElements])
 
   // TASK: Refresh shared aggregate progress for cross-mode consistency.
   // HOW CODE SOLVES: Pulls persisted totals from progress IPC endpoint.
@@ -194,21 +223,23 @@ export function WeakAreaScreen({ onBackToModes, onAskAboutQuestion, onExplainDif
 
   return (
     <main className="app-shell">
-      <header className="top-bar">
-        <div>
-          <h1>HamStudy Pro</h1>
-          <p className="subtitle">{formatTierLabel(tier)} Weak Areas</p>
-        </div>
-        <button type="button" className="ghost-btn" onClick={onBackToModes}>
-          Back to Modes
-        </button>
-        <div className="stats-grid">
-          <StatPill label="Drill attempted" value={localStats.attempted} />
-          <StatPill label="Drill accuracy" value={`${accuracy}%`} />
-          <StatPill label="Global answers" value={globalStats?.totalAnswers ?? 0} />
-          <StatPill label="Global accuracy" value={`${globalStats?.accuracyPct ?? 0}%`} />
-        </div>
-      </header>
+      <ScreenHeader
+        title="HamStudy Pro"
+        subtitle={`${formatTierLabel(tier)} Weak Areas`}
+        actions={
+          <button type="button" className="ghost-btn" onClick={onBackToModes}>
+            Back to Modes
+          </button>
+        }
+        stats={
+          <>
+            <StatPill label="Drill Attempted" value={localStats.attempted} />
+            <StatPill label="Drill Accuracy" value={`${accuracy}%`} />
+            <StatPill label="Global Answers" value={globalStats?.totalAnswers ?? 0} />
+            <StatPill label="Global Accuracy" value={`${globalStats?.accuracyPct ?? 0}%`} />
+          </>
+        }
+      />
 
       <section className="panel mode-config-panel">
         <div className="mode-config-card">
@@ -226,8 +257,9 @@ export function WeakAreaScreen({ onBackToModes, onAskAboutQuestion, onExplainDif
           </div>
         </div>
         <div className="mode-config-card">
-          <span className="mode-config-label">Topics</span>
-          <p className="meta">Targeted topics: {weakSubElements.join(', ') || 'loading...'}</p>
+          <span className="mode-config-label">{weakTopicCardTitle}</span>
+          <p className="meta">Focus: {weakTopicSummary}</p>
+          <p className="meta">{weakTopicSupportCopy}</p>
         </div>
         <div className="mode-config-card">
           <span className="mode-config-label">Study Tools</span>

@@ -4,6 +4,7 @@ import type { DailyChallengeEvent, ExamTier, ProgressionTrendData, RecentAnswerA
 import { StatPill } from '../components/StatPill'
 import { StreakBadge } from '../components/StreakBadge'
 import { XPBar } from '../components/XPBar'
+import { ScreenHeader } from '../components/ScreenHeader'
 import { useProgressionStore } from '../store/useProgressionStore'
 import { calculateOverallReadiness, calculateTierReadiness } from '../utils/readiness'
 
@@ -132,6 +133,18 @@ export function DashboardScreen({ onBackToModes, onStartDailyChallenge }: Dashbo
   const streakDays = progressionSummary?.currentStreakDays ?? 0
 
   const totalDueToday = dueByTier.technician + dueByTier.general + dueByTier.extra
+  const totalAnswersTracked = useMemo(
+    () => tierStats.reduce((sum, row) => sum + row.totalAnswers, 0),
+    [tierStats],
+  )
+  const totalCorrectAnswers = useMemo(
+    () => tierStats.reduce((sum, row) => sum + row.correctAnswers, 0),
+    [tierStats],
+  )
+  const allTimeAccuracy = useMemo(
+    () => (totalAnswersTracked > 0 ? Number(((totalCorrectAnswers / totalAnswersTracked) * 100).toFixed(2)) : 0),
+    [totalAnswersTracked, totalCorrectAnswers],
+  )
   const tierReadiness = useMemo(
     () =>
       tierStats.map((row) =>
@@ -187,7 +200,7 @@ export function DashboardScreen({ onBackToModes, onStartDailyChallenge }: Dashbo
         ipcBridge.getDueSrsQueue({ tier: 'technician', limit: 300 }),
         ipcBridge.getDueSrsQueue({ tier: 'general', limit: 300 }),
         ipcBridge.getDueSrsQueue({ tier: 'extra', limit: 300 }),
-        ipcBridge.getRecentAnswerActivity({ limit: 18 }),
+        ipcBridge.getRecentAnswerActivity({ limit: 10 }),
         ipcBridge.getDailyChallengeEvents({ limit: 6 }),
         ipcBridge.getProgressionTrend({ days: 7, streakGraceHours: 2, tier: 'all' }),
       ])
@@ -238,30 +251,23 @@ export function DashboardScreen({ onBackToModes, onStartDailyChallenge }: Dashbo
 
   return (
     <main className="app-shell">
-      <header className="top-bar">
-        <div>
-          <h1>HamStudy Pro</h1>
-          <p className="subtitle">Dashboard</p>
-        </div>
-        <button type="button" className="ghost-btn" onClick={onBackToModes}>
-          Back to Modes
-        </button>
-        <div className="stats-grid">
-          <StatPill label="Readiness" value={`${readinessPct}%`} icon="🧭" />
-          <StatPill label="Due Today" value={totalDueToday} icon="⏳" />
-        </div>
-        <div className="dashboard-progression-row">
-          <StreakBadge
-            currentStreak={progressionSummary?.currentStreakDays ?? 0}
-            longestStreak={progressionSummary?.longestStreakDays ?? 0}
-          />
-          <XPBar
-            levelTitle={progressionSummary?.levelTitle ?? 'Novice'}
-            totalXp={progressionSummary?.totalXp ?? 0}
-            xpToNextLevel={progressionSummary?.xpToNextLevel ?? null}
-          />
-        </div>
-      </header>
+      <ScreenHeader
+        title="HamStudy Pro"
+        subtitle="Dashboard"
+        actions={
+          <button type="button" className="ghost-btn" onClick={onBackToModes}>
+            Back to Modes
+          </button>
+        }
+        stats={
+          <>
+            <StatPill label="Readiness" value={`${readinessPct}%`} icon="🧭" />
+            <StatPill label="Answers Tracked" value={totalAnswersTracked} icon="📝" />
+            <StatPill label="Due Today (All Tiers)" value={totalDueToday} icon="⏳" />
+            <StatPill label="All-time Accuracy" value={`${allTimeAccuracy}%`} icon="🎯" />
+          </>
+        }
+      />
 
       <section className="panel dashboard-hero-panel">
         <p className="mode-tagline">Stay consistent. Clear your due queue. Build confidence before exam day.</p>
@@ -280,6 +286,17 @@ export function DashboardScreen({ onBackToModes, onStartDailyChallenge }: Dashbo
             icon="📈"
           />
           <StatPill label="Today" value={`${progressionSummary?.todaysAccuracyPct ?? 0}% accuracy`} icon="🧠" />
+        </div>
+        <div className="dashboard-progression-row">
+          <StreakBadge
+            currentStreak={progressionSummary?.currentStreakDays ?? 0}
+            longestStreak={progressionSummary?.longestStreakDays ?? 0}
+          />
+          <XPBar
+            levelTitle={progressionSummary?.levelTitle ?? 'Novice'}
+            totalXp={progressionSummary?.totalXp ?? 0}
+            xpToNextLevel={progressionSummary?.xpToNextLevel ?? null}
+          />
         </div>
         <p className="meta">{streakTrendLabel}</p>
       </section>

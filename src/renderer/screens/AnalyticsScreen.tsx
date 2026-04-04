@@ -16,6 +16,7 @@ import {
 } from 'recharts'
 import { ipcBridge, type ProgressStats } from '@shared/ipcBridge'
 import type { AccuracyHeatmapCell, DailyChallengeEvent, ProgressionTrendData, RecentAnswerActivity, TierProgressStats } from '@shared/types'
+import { ScreenHeader } from '../components/ScreenHeader'
 import { StatPill } from '../components/StatPill'
 import { calculateOverallReadiness, calculateTierReadiness } from '../utils/readiness'
 
@@ -370,90 +371,134 @@ export function AnalyticsScreen({ onBackToModes }: AnalyticsScreenProps) {
 
   return (
     <main className="app-shell">
-      <header className="top-bar">
-        <div>
-          <h1>HamStudy Pro</h1>
-          <p className="subtitle">Analytics</p>
-        </div>
-        <button type="button" className="ghost-btn" onClick={onBackToModes}>
-          Back to Modes
-        </button>
-        <div className="stats-grid">
-          <StatPill label="Readiness" value={`${readinessPct}%`} />
-          <StatPill label="Answers Tracked" value={recentActivity.length} />
-          <StatPill label={`Due Today (${dueScopeLabel})`} value={dueForScope} />
-          <StatPill label="All-time Accuracy" value={`${stats?.accuracyPct ?? 0}%`} />
-        </div>
-      </header>
+      <ScreenHeader
+        title="HamStudy Pro"
+        subtitle="Analytics"
+        actions={
+          <button type="button" className="ghost-btn" onClick={onBackToModes}>
+            Back to Modes
+          </button>
+        }
+        stats={
+          <>
+            <StatPill label="Readiness" value={`${readinessPct}%`} icon="🧭" />
+            <StatPill label="Answers Tracked" value={recentActivity.length} icon="📝" />
+            <StatPill label={`Due Today (${dueScopeLabel})`} value={dueForScope} icon="⏳" />
+            <StatPill label="All-time Accuracy" value={`${stats?.accuracyPct ?? 0}%`} icon="🎯" />
+          </>
+        }
+      />
 
       <section className="panel dashboard-hero-panel">
-        <p className="mode-tagline">Track trend lines, expose weak topics, and calibrate exam readiness.</p>
-        <p className="meta">
-          {leadTier && weakestTier
-            ? `Best current tier: ${formatTierName(leadTier.tier)} at ${leadTier.score}%. Biggest drag: ${formatTierName(weakestTier.tier)} at ${weakestTier.score}%.`
-            : 'This is the Phase 3 analytics foundation using persisted answer history and due-queue data.'}
-        </p>
-        <div className="analytics-filter-chips">
-          <span className="analytics-filter-chip">Tier: {tierLabel}</span>
-          <span className="analytics-filter-chip">Window: {trendWindowDays}d</span>
-          <span className="analytics-filter-chip">Scope: {scopeLabel}</span>
-          <span className="analytics-filter-chip">Challenge completion: {challengeCompletionRate}%</span>
-        </div>
-        <div className="readiness-mini-chart" role="list" aria-label="Tier readiness mini chart">
-          {tierReadiness.map((row) => {
-            const isEmphasized = readinessEmphasisTier === row.tier
-            const band = resolveReadinessBand(row.score)
-
-            return (
-              <div
-                key={row.tier}
-                role="listitem"
-                className={`readiness-mini-row ${isEmphasized ? 'active' : ''}`}
-                title={`${row.tier}: ${row.score}% readiness, ${row.confidencePct}% confidence`}
-              >
-                <span className="readiness-mini-label">{row.tier}</span>
-                <div className="readiness-mini-track" aria-hidden="true">
-                  <span className={`readiness-mini-fill heatmap-${band}`} style={{ width: `${row.score}%` }} />
-                </div>
-                <span className="readiness-mini-value">{row.score}%</span>
+        <div className="analytics-hero-layout">
+          <div className="analytics-hero-copy">
+            <p className="mode-tagline">Track trend lines, expose weak topics, and calibrate exam readiness.</p>
+            <div className="analytics-hero-highlight">
+              <div className="analytics-hero-highlight-copy">
+                <span className="analytics-hero-kicker">Current Signal</span>
+                <h2>
+                  {leadTier && weakestTier
+                    ? `${formatTierName(leadTier.tier)} is leading while ${formatTierName(weakestTier.tier)} needs attention.`
+                    : 'Build your first analytics baseline.'}
+                </h2>
+                <p className="meta">
+                  {leadTier && weakestTier
+                    ? `Best current tier: ${formatTierName(leadTier.tier)} at ${leadTier.score}%. Biggest drag: ${formatTierName(weakestTier.tier)} at ${weakestTier.score}%.`
+                    : 'This analytics view turns answer history and due-queue data into a study signal you can actually act on.'}
+                </p>
               </div>
-            )
-          })}
+              <div className="analytics-hero-metrics">
+                <div className="analytics-hero-metric">
+                  <span>Best Tier</span>
+                  <strong>{leadTier ? formatTierName(leadTier.tier) : 'No data'}</strong>
+                  <small>{leadTier ? `${leadTier.score}% readiness` : 'Answer more questions to unlock this.'}</small>
+                </div>
+                <div className="analytics-hero-metric">
+                  <span>Challenge Rate</span>
+                  <strong>{challengeCompletionRate}%</strong>
+                  <small>Daily challenge completion across the selected window.</small>
+                </div>
+              </div>
+            </div>
+
+            <div className="analytics-filter-chips">
+              <span className="analytics-filter-chip">Tier: {tierLabel}</span>
+              <span className="analytics-filter-chip">Window: {trendWindowDays} days</span>
+              <span className="analytics-filter-chip">Scope: {scopeLabel}</span>
+              <span className="analytics-filter-chip">Challenge completion: {challengeCompletionRate}%</span>
+            </div>
+          </div>
+
+          <aside className="analytics-readiness-panel">
+            <div className="analytics-readiness-header">
+              <div>
+                <span className="analytics-hero-kicker">Tier Readiness</span>
+                <h3>Quick calibration snapshot</h3>
+              </div>
+              <strong className="analytics-readiness-overall">{readinessPct}%</strong>
+            </div>
+            <div className="readiness-mini-chart" role="list" aria-label="Tier readiness mini chart">
+              {tierReadiness.map((row) => {
+                const isEmphasized = readinessEmphasisTier === row.tier
+                const band = resolveReadinessBand(row.score)
+
+                return (
+                  <div
+                    key={row.tier}
+                    role="listitem"
+                    className={`readiness-mini-row ${isEmphasized ? 'active' : ''}`}
+                    title={`${row.tier}: ${row.score}% readiness, ${row.confidencePct}% confidence`}
+                  >
+                    <span className="readiness-mini-label">{row.tier}</span>
+                    <div className="readiness-mini-track" aria-hidden="true">
+                      <span className={`readiness-mini-fill heatmap-${band}`} style={{ width: `${row.score}%` }} />
+                    </div>
+                    <span className="readiness-mini-value">{row.score}%</span>
+                  </div>
+                )
+              })}
+            </div>
+          </aside>
         </div>
-        <div className="session-controls-row analytics-controls-row">
-          <label>
-            Tier
-            <select value={selectedTier} onChange={(event) => setSelectedTier(event.target.value as AnalyticsTier)}>
-              <option value="all">All Tiers</option>
-              <option value="technician">Technician</option>
-              <option value="general">General</option>
-              <option value="extra">Extra</option>
-            </select>
-          </label>
-          <label>
-            Trend Window
-            <select
-              value={trendWindowDays}
-              onChange={(event) => setTrendWindowDays(Number(event.target.value) as TrendWindowDays)}
-            >
-              <option value={14}>Last 14 days</option>
-              <option value={30}>Last 30 days</option>
-              <option value={60}>Last 60 days</option>
-            </select>
-          </label>
-          <label>
-            Metric Scope
-            <select
-              value={effectiveMetricScope}
-              onChange={(event) => setMetricScope(event.target.value as MetricScope)}
-              disabled={isScopeLockedToAll}
-            >
-              <option value="selected">Selected Tier</option>
-              <option value="all">All Tiers</option>
-            </select>
-          </label>
+
+        <div className="analytics-controls-panel">
+          <div className="session-controls-row analytics-controls-row">
+            <label>
+              <span className="analytics-control-label">Tier</span>
+              <select value={selectedTier} onChange={(event) => setSelectedTier(event.target.value as AnalyticsTier)}>
+                <option value="all">All Tiers</option>
+                <option value="technician">Technician</option>
+                <option value="general">General</option>
+                <option value="extra">Extra</option>
+              </select>
+            </label>
+            <label>
+              <span className="analytics-control-label">Trend Window</span>
+              <select
+                value={trendWindowDays}
+                onChange={(event) => setTrendWindowDays(Number(event.target.value) as TrendWindowDays)}
+              >
+                <option value={14}>Last 14 days</option>
+                <option value={30}>Last 30 days</option>
+                <option value={60}>Last 60 days</option>
+              </select>
+            </label>
+            <label>
+              <span className="analytics-control-label">Metric Scope</span>
+              <select
+                value={effectiveMetricScope}
+                onChange={(event) => setMetricScope(event.target.value as MetricScope)}
+                disabled={isScopeLockedToAll}
+              >
+                <option value="selected">Selected Tier</option>
+                <option value="all">All Tiers</option>
+              </select>
+            </label>
+          </div>
+          {isScopeLockedToAll ? (
+            <p className="analytics-lock-note">Metric scope is locked to All Tiers while Tier is set to All Tiers.</p>
+          ) : null}
         </div>
-        {isScopeLockedToAll ? <p className="meta">Metric scope is locked to All Tiers while Tier is set to All Tiers.</p> : null}
       </section>
 
       <section className="panel analytics-grid">

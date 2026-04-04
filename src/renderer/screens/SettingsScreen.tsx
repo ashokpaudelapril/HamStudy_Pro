@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ipcBridge, type ResetAppDataResult } from '@shared/ipcBridge'
 import type { UserSettings, VoiceDiagnostics, AiProvider, ApiKeyStatus } from '@shared/types'
+import { ScreenHeader } from '../components/ScreenHeader'
+import { StatPill } from '../components/StatPill'
 
 type SettingsScreenProps = {
   onBackToModes: () => void
@@ -294,15 +296,36 @@ export function SettingsScreen({ onBackToModes }: SettingsScreenProps) {
   // duplicated the form values). Save/Reset promoted to a dedicated actions footer row.
   return (
     <main className="app-shell">
-      <header className="top-bar">
-        <div>
-          <h1>HamStudy Pro</h1>
-          <p className="subtitle">Settings</p>
-        </div>
-        <button type="button" className="ghost-btn" onClick={onBackToModes}>
-          ← Back to Modes
-        </button>
-      </header>
+      <ScreenHeader
+        title="HamStudy Pro"
+        subtitle="Settings"
+        actions={
+          <button type="button" className="ghost-btn" onClick={onBackToModes}>
+            Back to Modes
+          </button>
+        }
+        stats={
+          settings ? (
+            <>
+              <StatPill
+                label="Theme"
+                value={settings.theme === 'system' ? 'System' : settings.theme === 'dark' ? 'Dark' : 'Light'}
+                icon="🎨"
+              />
+              <StatPill label="Daily Goal" value={`${settings.dailyGoalMinutes} min`} icon="🗓️" />
+              <StatPill label="AI Provider" value={settings.aiProvider ? settings.aiProvider : 'None'} icon="🤖" />
+              <StatPill label="Voice Rate" value={`${settings.voiceRate.toFixed(1)}x`} icon="🔊" />
+            </>
+          ) : (
+            <>
+              <StatPill label="Theme" value="Loading…" icon="🎨" />
+              <StatPill label="Daily Goal" value="Loading…" icon="🗓️" />
+              <StatPill label="AI Provider" value="Loading…" icon="🤖" />
+              <StatPill label="Voice Rate" value="Loading…" icon="🔊" />
+            </>
+          )
+        }
+      />
 
       <section className="panel">
         {loading ? <p>Loading settings…</p> : null}
@@ -538,7 +561,12 @@ export function SettingsScreen({ onBackToModes }: SettingsScreenProps) {
 
       <section className="panel settings-danger-panel">
         <p className="mode-tagline">Danger Zone</p>
-        <p className="meta">Reset everything if you want a completely fresh start.</p>
+        <p className="meta">
+          Reset Everything wipes all study data and app state for a completely fresh start.
+        </p>
+        <p className="meta">
+          This includes progress history, accuracy stats, SRS reviews, flagged/starred questions, saved mnemonics, chat history, and saved settings.
+        </p>
         <div className="action-row">
           <button type="button" className="danger-btn" onClick={handleResetEverything} disabled={resetting || saving || loading}>
             {resetting ? 'Resetting...' : 'Reset Everything'}
