@@ -1,0 +1,11 @@
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.icns binary
+*.dmg binary
+*.zip binary
+*.db binary
+*.sqlite binary
