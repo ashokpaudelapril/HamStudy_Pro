@@ -2,9 +2,9 @@ import { type FormEvent, useCallback, useEffect, useState } from 'react'
 import { ipcBridge, type ProgressStats } from '@shared/ipcBridge'
 import type { ExamTier, Question } from '@shared/types'
 import { AnswerButton } from '../components/AnswerButton'
+import { ModeBar } from '../components/ModeBar'
 import { QuestionFigure } from '../components/QuestionFigure'
-import { ScreenHeader } from '../components/ScreenHeader'
-import { StatPill } from '../components/StatPill'
+import { SectionTabs } from '../components/SectionTabs'
 import { useSRS } from '../hooks/useSRS'
 
 type SpeedRoundScreenProps = {
@@ -41,6 +41,11 @@ export function SpeedRoundScreen({
   onAskAboutQuestion,
   onExplainDifferently,
 }: SpeedRoundScreenProps) {
+  const TABS = [
+    { id: 'setup', label: 'Setup' },
+    { id: 'practice', label: 'Practice Workspace' },
+  ] as const
+  const [activeTab, setActiveTab] = useState<(typeof TABS)[number]['id']>('setup')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [tier, setTier] = useState<ExamTier>('technician')
@@ -246,6 +251,7 @@ export function SpeedRoundScreen({
   // HOW CODE SOLVES: Prevents form navigation and reuses IPC-backed search pipeline.
   function handleSearchSubmit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault()
+    setActiveTab('practice')
     void runSearch(searchText.trim()).catch((err: unknown) => {
       const details = err instanceof Error ? err.message : String(err)
       setError(`Failed to search speed questions. ${details}`)
@@ -266,7 +272,6 @@ export function SpeedRoundScreen({
     })
   }
 
-  const roundAccuracy = roundStats.attempted > 0 ? Number(((roundStats.correct / roundStats.attempted) * 100).toFixed(2)) : 0
   const avgSeconds = roundStats.attempted > 0 ? Number((roundStats.totalTimeMs / roundStats.attempted / 1000).toFixed(2)) : 0
   const timerTone = secondsLeft <= 4 ? 'danger' : secondsLeft <= 8 ? 'warn' : 'safe'
   const searchSummary = searchText.trim().length > 0 ? searchText.trim() : 'None'
@@ -274,24 +279,12 @@ export function SpeedRoundScreen({
 
   return (
     <main className="app-shell">
-      <ScreenHeader
-        title="HamStudy Pro"
-        subtitle={`${formatTierLabel(tier)} Speed Round`}
-        actions={
-          <button type="button" className="ghost-btn" onClick={onBackToModes}>
-            Back to Modes
-          </button>
-        }
-        stats={
-          <>
-            <StatPill label="Round Attempts" value={roundStats.attempted} />
-            <StatPill label="Round Accuracy" value={`${roundAccuracy}%`} />
-            <StatPill label="Timeouts" value={roundStats.timedOut} />
-            <StatPill label="Avg Sec/Answer" value={avgSeconds} />
-          </>
-        }
-      />
+      <ModeBar title={`${formatTierLabel(tier)} Speed Round`} onBack={onBackToModes} />
 
+      <SectionTabs items={[...TABS]} activeId={activeTab} onChange={(id) => setActiveTab(id as any)} />
+
+      {activeTab === 'setup' ? (
+        <div className="app-shell-scroll">
       <section className="panel mode-config-panel">
         <div className="mode-config-card">
           <span className="mode-config-label">Tier</span>
@@ -352,7 +345,11 @@ export function SpeedRoundScreen({
           </div>
         </div>
       </section>
+      </div>
+      ) : null}
 
+      {activeTab === 'practice' ? (
+        <div className="app-shell-fixed">
       <section className="panel question-session-overview">
         <div className="question-session-overview-row">
           <div className="question-session-card">
@@ -392,7 +389,7 @@ export function SpeedRoundScreen({
         ) : null}
       </section>
 
-      <section className="panel question-panel">
+      <section className="panel scroll-pane question-panel" style={{ flex: 1 }}>
         {loading ? <p>Loading speed round...</p> : null}
         {error ? <p className="error-text">{error}</p> : null}
         {!isSrsBridgeAvailable ? <p className="meta">SRS updates unavailable in this run. Restart app to re-enable.</p> : null}
@@ -466,6 +463,8 @@ export function SpeedRoundScreen({
 
         {!loading && !error && !hasQuestion && !roundComplete ? <p>No speed-round questions found for this search.</p> : null}
       </section>
+      </div>
+      ) : null}
     </main>
   )
 }

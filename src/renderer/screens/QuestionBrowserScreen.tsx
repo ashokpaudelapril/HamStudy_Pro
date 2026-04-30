@@ -3,7 +3,7 @@ import { ipcBridge } from '@shared/ipcBridge'
 import type { ExamTier, MasteryState, Question, QuestionBrowserDetail, QuestionBrowserRow } from '@shared/types'
 import { ExplanationPanel } from '../components/ExplanationPanel'
 import { QuestionFigure } from '../components/QuestionFigure'
-import { ScreenHeader } from '../components/ScreenHeader'
+import { SectionTabs } from '../components/SectionTabs'
 import { StatPill } from '../components/StatPill'
 
 type QuestionBrowserScreenProps = {
@@ -16,6 +16,12 @@ type QuestionBrowserScreenProps = {
 // HOW CODE SOLVES: Uses tier/query/sub-element filters for list results and
 //                  loads a full question detail panel via `questions:get-by-id`.
 export function QuestionBrowserScreen({ onBackToModes, onAskAboutQuestion, onExplainDifferently }: QuestionBrowserScreenProps) {
+  const PAGE_SIZE = 10
+  const DETAIL_TABS = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'review', label: 'Review' },
+    { id: 'history', label: 'History' },
+  ] as const
   const [loading, setLoading] = useState(true)
   const [detailLoading, setDetailLoading] = useState(false)
   const [enhancedBrowserAvailable, setEnhancedBrowserAvailable] = useState(true)
@@ -31,6 +37,14 @@ export function QuestionBrowserScreen({ onBackToModes, onAskAboutQuestion, onExp
   const [selectedDetail, setSelectedDetail] = useState<QuestionBrowserDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [hasAiProvider, setHasAiProvider] = useState(false)
+  const [detailTab, setDetailTab] = useState<(typeof DETAIL_TABS)[number]['id']>('overview')
+  const [page, setPage] = useState(0)
+  const selectedRow = useMemo(() => questionRows.find((row) => row.id === selectedId) ?? null, [questionRows, selectedId])
+  const pageCount = Math.max(1, Math.ceil(questionRows.length / PAGE_SIZE))
+  const visibleRows = useMemo(() => {
+    const start = page * PAGE_SIZE
+    return questionRows.slice(start, start + PAGE_SIZE)
+  }, [page, questionRows])
 
   // TASK: Check whether an AI provider key is set so the mnemonic button is shown.
   // HOW CODE SOLVES: Reads settings once on mount; ExplanationPanel uses the flag to
@@ -108,12 +122,14 @@ export function QuestionBrowserScreen({ onBackToModes, onAskAboutQuestion, onExp
     setMasteryFilter('all')
     setStarredOnly(false)
     setFlaggedOnly(false)
+    setPage(0)
   }
 
   // TASK: Load detail record when selected id changes.
   // HOW CODE SOLVES: Uses primary-key lookup for consistent detail rendering.
   const loadQuestionDetail = useCallback(async (questionId: string): Promise<void> => {
     setDetailLoading(true)
+    setDetailTab('overview')
     try {
       if (enhancedBrowserAvailable) {
         const detail = await ipcBridge.getQuestionBrowserDetail({ questionId, recentLimit: 8 })
@@ -195,6 +211,7 @@ export function QuestionBrowserScreen({ onBackToModes, onAskAboutQuestion, onExp
     }
 
     setQuestionRows(rows)
+    setPage(0)
 
     if (rows.length === 0) {
       setSelectedId(null)
@@ -279,119 +296,117 @@ export function QuestionBrowserScreen({ onBackToModes, onAskAboutQuestion, onExp
   }
 
   return (
-    <main className="app-shell">
-      <ScreenHeader
-        title="HamStudy Pro"
-        subtitle="Question Browser"
-        actions={
-          <button type="button" className="ghost-btn" onClick={onBackToModes}>
-            Back to Modes
+    <main className="browser-page fixed-layout">
+      <header className="browser-toolbar">
+        <div className="browser-toolbar-left">
+          <button type="button" className="console-button secondary compact-back-btn" onClick={onBackToModes}>
+            Back
           </button>
-        }
-        stats={
-          <>
-            <StatPill label="Tier" value={tier} icon="📚" />
-            <StatPill label="Results" value={questionRows.length} icon="🗂️" />
-            <StatPill label="Topics" value={availableSubElements.length} icon="🧩" />
-          </>
-        }
-      />
-
-      <section className="panel mode-config-panel">
-        <div className="mode-config-card">
-          <span className="mode-config-label">Tier</span>
-          <div className="exam-tier-buttons">
-            <button type="button" className={`exam-tier-btn ${tier === 'technician' ? 'active' : ''}`} onClick={() => setTier('technician')} disabled={loading}>
-              Technician
-            </button>
-            <button type="button" className={`exam-tier-btn ${tier === 'general' ? 'active' : ''}`} onClick={() => setTier('general')} disabled={loading}>
-              General
-            </button>
-            <button type="button" className={`exam-tier-btn ${tier === 'extra' ? 'active' : ''}`} onClick={() => setTier('extra')} disabled={loading}>
-              Extra
-            </button>
-          </div>
-        </div>
-
-        <form className="mode-search-form" onSubmit={handleFilterSubmit}>
-          <span className="mode-config-label">Search</span>
-          <div className="mode-search-row">
+          <form className="browser-toolbar-search" onSubmit={handleFilterSubmit}>
             <input
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              placeholder="Search by ID, question text, reference, topic, or group"
+              placeholder="Search by ID, text, topic, or reference"
             />
             <button type="submit" disabled={loading}>
-              Apply Filters
+                  Search
             </button>
-            <button type="button" className="ghost-btn" onClick={handleClearFilters} disabled={loading || activeFilterCount === 0}>
-              Clear Filters
-            </button>
-          </div>
-        </form>
-
-        <div className="mode-config-card">
-          <span className="mode-config-label">Filters</span>
-          <div className="custom-controls">
-            <label>
-              Topic
-              <select value={activeSubElement} onChange={(e) => setActiveSubElement(e.target.value)} disabled={loading}>
-                <option value="all">All topics</option>
-                {availableSubElements.map((subElement) => (
-                  <option key={subElement} value={subElement}>
-                    {subElement}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              Progress
-              <select
-                value={masteryFilter}
-                onChange={(e) => setMasteryFilter(e.target.value as MasteryState)}
-                disabled={loading || !enhancedBrowserAvailable}
-              >
-                <option value="all">Any progress</option>
-                <option value="unseen">Unseen</option>
-                <option value="learning">Learning</option>
-                <option value="known">Known</option>
-                <option value="mastered">Mastered</option>
-              </select>
-            </label>
-
-            <label className="browser-toggle">
-              <input
-                type="checkbox"
-                checked={starredOnly}
-                onChange={(e) => setStarredOnly(e.target.checked)}
-                disabled={loading || !enhancedBrowserAvailable}
-              />
-              Starred
-            </label>
-
-            <label className="browser-toggle">
-              <input
-                type="checkbox"
-                checked={flaggedOnly}
-                onChange={(e) => setFlaggedOnly(e.target.checked)}
-                disabled={loading || !enhancedBrowserAvailable}
-              />
-              Flagged
-            </label>
-          </div>
+          </form>
         </div>
+
+        <div className="browser-toolbar-meta mono-data">
+          <span>{tier.toUpperCase()}</span>
+          <span>{questionRows.length} results</span>
+          <span>{activeFilterCount} filters</span>
+        </div>
+
+        <div className="exam-tier-buttons">
+          <button type="button" className={`exam-tier-btn ${tier === 'technician' ? 'active' : ''}`} onClick={() => setTier('technician')} disabled={loading}>
+            TECH
+          </button>
+          <button type="button" className={`exam-tier-btn ${tier === 'general' ? 'active' : ''}`} onClick={() => setTier('general')} disabled={loading}>
+            GEN
+          </button>
+          <button type="button" className={`exam-tier-btn ${tier === 'extra' ? 'active' : ''}`} onClick={() => setTier('extra')} disabled={loading}>
+            EXTRA
+          </button>
+        </div>
+      </header>
+
+      <section className="browser-filter-bar">
+        <label>
+          <span className="mode-config-label">Topic</span>
+          <select value={activeSubElement} onChange={(e) => setActiveSubElement(e.target.value)} disabled={loading}>
+            <option value="all">All topics</option>
+            {availableSubElements.map((subElement) => (
+              <option key={subElement} value={subElement}>
+                {subElement}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label>
+          <span className="mode-config-label">Progress</span>
+          <select
+            value={masteryFilter}
+            onChange={(e) => setMasteryFilter(e.target.value as MasteryState)}
+            disabled={loading || !enhancedBrowserAvailable}
+          >
+            <option value="all">Any progress</option>
+            <option value="unseen">Unseen</option>
+            <option value="learning">Learning</option>
+            <option value="known">Known</option>
+            <option value="mastered">Mastered</option>
+          </select>
+        </label>
+
+        <label className="browser-toggle">
+          <input
+            type="checkbox"
+            checked={starredOnly}
+            onChange={(e) => setStarredOnly(e.target.checked)}
+            disabled={loading || !enhancedBrowserAvailable}
+          />
+          Starred
+        </label>
+
+        <label className="browser-toggle">
+          <input
+            type="checkbox"
+            checked={flaggedOnly}
+            onChange={(e) => setFlaggedOnly(e.target.checked)}
+            disabled={loading || !enhancedBrowserAvailable}
+          />
+          Flagged
+        </label>
+
+        <button type="button" className="ghost-btn" onClick={handleClearFilters} disabled={loading || activeFilterCount === 0}>
+          Clear
+        </button>
       </section>
 
-      <section className="panel browser-panel">
+      <section className="browser-stage">
         <aside className="browser-list" aria-label="Question results list">
           <div className="browser-list-header">
             <div>
               <strong>Results</strong>
               <p className="meta">
-                {questionRows.length} question{questionRows.length === 1 ? '' : 's'} in {tier}
-                {activeFilterCount > 0 ? ` • ${activeFilterCount} active filter${activeFilterCount === 1 ? '' : 's'}` : ''}
+                Search the pool, then open one question at a time in the main stage.
               </p>
+            </div>
+            <div className="browser-list-paging mono-data">
+              <span>
+                {questionRows.length === 0 ? 0 : page * PAGE_SIZE + 1}-{Math.min(questionRows.length, (page + 1) * PAGE_SIZE)} / {questionRows.length}
+              </span>
+              <div className="browser-list-paging-actions">
+                <button type="button" className="ghost-btn" onClick={() => setPage((current) => Math.max(0, current - 1))} disabled={page === 0}>
+                  Prev
+                </button>
+                <button type="button" className="ghost-btn" onClick={() => setPage((current) => Math.min(pageCount - 1, current + 1))} disabled={page >= pageCount - 1}>
+                  Next
+                </button>
+              </div>
             </div>
           </div>
 
@@ -412,7 +427,7 @@ export function QuestionBrowserScreen({ onBackToModes, onAskAboutQuestion, onExp
           ) : null}
 
           {!loading && !error
-            ? questionRows.map((row) => {
+            ? visibleRows.map((row) => {
                 const active = selectedId === row.id
                 return (
                   <button
@@ -422,121 +437,156 @@ export function QuestionBrowserScreen({ onBackToModes, onAskAboutQuestion, onExp
                     onClick={() => handleSelectRow(row.id)}
                   >
                     <span className="browser-row-id">{row.id}</span>
+                    <span className="browser-row-topic">{row.subElement}</span>
+                    <span className="browser-row-state">{row.masteryState}</span>
                     <span className="browser-row-text">{row.questionText}</span>
-                    <span className="browser-row-meta">
-                      {row.subElement} • {row.groupId} • {row.masteryState} • {row.accuracyPct}%
-                    </span>
                   </button>
                 )
               })
             : null}
         </aside>
 
-        <article className="browser-detail">
+        <article className="browser-detail-shell">
           {detailLoading ? <p>Loading question detail...</p> : null}
           {!detailLoading && selectedQuestion ? (
-            <div key={selectedQuestion.id} className="question-stage">
-              <p className="meta">
-                {selectedQuestion.id} • {selectedQuestion.subElement} • {selectedQuestion.groupId}
-              </p>
-
-              <div className="action-row">
-                <button
-                  type="button"
-                  className={`ghost-btn ${selectedQuestion.starred ? 'active-flag' : ''}`}
-                  onClick={() => handleUpdateReviewState({ starred: !selectedQuestion.starred })}
-                  disabled={detailLoading}
-                >
-                  {selectedQuestion.starred ? 'Unstar' : 'Star'}
-                </button>
-                <button
-                  type="button"
-                  className={`ghost-btn ${selectedQuestion.flagged ? 'active-flag' : ''}`}
-                  onClick={() => handleUpdateReviewState({ flagged: !selectedQuestion.flagged })}
-                  disabled={detailLoading}
-                >
-                  {selectedQuestion.flagged ? 'Unflag' : 'Flag'}
-                </button>
-                <button
-                  type="button"
-                  className="ghost-btn"
-                  onClick={() => onAskAboutQuestion?.(selectedQuestion)}
-                  disabled={detailLoading}
-                >
-                  Ask About This Question
-                </button>
-                <button
-                  type="button"
-                  className="ghost-btn"
-                  onClick={() => onExplainDifferently?.(selectedQuestion)}
-                  disabled={detailLoading}
-                >
-                  Explain It Differently
-                </button>
-              </div>
-
-              <h2>{selectedQuestion.questionText}</h2>
-              <QuestionFigure question={selectedQuestion} />
-
-              <div className="answers-grid">
-                {selectedQuestion.answers.map((answer, idx) => {
-                  const isCorrect = idx === selectedQuestion.correctIndex
-                  return (
-                    <div key={`${selectedQuestion.id}-${idx}`} className={`browser-answer${isCorrect ? ' correct' : ''}`}>
-                      <span className="choice-label">{String.fromCharCode(65 + idx)}.</span>
-                      <span>{answer}</span>
-                    </div>
-                  )
-                })}
-              </div>
-
-              {selectedQuestion.hint ? <p className="meta">Hint: {selectedQuestion.hint}</p> : null}
-              {selectedQuestion.mnemonic ? <p className="meta">Mnemonic: {selectedQuestion.mnemonic}</p> : null}
-              {selectedQuestion.explanation ? <p className="meta">Explanation: {selectedQuestion.explanation}</p> : null}
-
-              <ExplanationPanel question={selectedQuestion} submitted={true} showWhenUnsubmitted hasAiProvider={hasAiProvider} />
-
-              <p className="meta">Reference: {selectedQuestion.refs}</p>
-
-              {selectedDetail ? (
-                <div className="browser-detail-sections">
-                  <div className="stats-grid">
-                    <StatPill label="Attempts" value={selectedDetail.historySummary.attempts} />
-                    <StatPill label="Accuracy" value={`${selectedDetail.historySummary.accuracyPct}%`} />
-                    <StatPill label="Avg Time" value={`${Math.round(selectedDetail.historySummary.averageTimeMs)} ms`} />
-                    <StatPill label="Last Answered" value={formatTimestamp(selectedDetail.historySummary.lastAnsweredAt)} />
-                  </div>
-
-                  <div className="stats-grid">
-                    <StatPill label="SRS Repetitions" value={selectedDetail.srsCard?.repetitions ?? 0} />
-                    <StatPill label="SRS Interval" value={selectedDetail.srsCard ? `${selectedDetail.srsCard.interval} d` : 'Not started'} />
-                    <StatPill
-                      label="SRS Ease"
-                      value={selectedDetail.srsCard ? selectedDetail.srsCard.easeFactor.toFixed(2) : 'Not started'}
-                    />
-                    <StatPill
-                      label="Next Review"
-                      value={selectedDetail.srsCard ? formatTimestamp(selectedDetail.srsCard.nextReview) : 'Not scheduled'}
-                    />
-                  </div>
-
-                  <div>
-                    <p className="meta">Recent Answers</p>
-                    {selectedDetail.recentAnswers.length === 0 ? (
-                      <p className="meta">No answer history for this question yet.</p>
-                    ) : (
-                      <ul className="browser-history-list">
-                        {selectedDetail.recentAnswers.map((answer) => (
-                          <li key={answer.id} className="browser-history-item">
-                            {formatTimestamp(answer.answeredAt)} • Choice {String.fromCharCode(65 + answer.selectedIndex)} •{' '}
-                            {answer.isCorrect ? 'Correct' : 'Incorrect'} • {answer.timeTakenMs} ms
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
+            <div key={selectedQuestion.id} className="browser-detail">
+              <div className="browser-detail-header">
+                <div className="browser-detail-topline">
+                  <span className="browser-row-id">{selectedQuestion.id}</span>
+                  <span className="subelement-tag mono-data">{selectedQuestion.subElement}</span>
+                  {selectedRow ? <span className="question-position-chip mono-data">{selectedRow.masteryState}</span> : null}
+                  {selectedRow?.accuracyPct ? <span className="question-position-chip mono-data">{selectedRow.accuracyPct}% accuracy</span> : null}
                 </div>
-              ) : null}
+
+                <div className="browser-detail-actions">
+                  <button
+                    type="button"
+                    className={`ghost-btn ${selectedQuestion.starred ? 'active-flag' : ''}`}
+                    onClick={() => handleUpdateReviewState({ starred: !selectedQuestion.starred })}
+                    disabled={detailLoading}
+                  >
+                    {selectedQuestion.starred ? 'Unstar' : 'Star'}
+                  </button>
+                  <button
+                    type="button"
+                    className={`ghost-btn ${selectedQuestion.flagged ? 'active-flag' : ''}`}
+                    onClick={() => handleUpdateReviewState({ flagged: !selectedQuestion.flagged })}
+                    disabled={detailLoading}
+                  >
+                    {selectedQuestion.flagged ? 'Unflag' : 'Flag'}
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost-btn"
+                    onClick={() => onAskAboutQuestion?.(selectedQuestion)}
+                    disabled={detailLoading}
+                  >
+                    Ask Tutor
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost-btn"
+                    onClick={() => onExplainDifferently?.(selectedQuestion)}
+                    disabled={detailLoading}
+                  >
+                    New Angle
+                  </button>
+                </div>
+              </div>
+
+              <div className="browser-question-stage">
+                <h2>{selectedQuestion.questionText}</h2>
+                <QuestionFigure question={selectedQuestion} />
+
+                <div className="answers-grid">
+                  {selectedQuestion.answers.map((answer, idx) => {
+                    const isCorrect = idx === selectedQuestion.correctIndex
+                    return (
+                      <div key={`${selectedQuestion.id}-${idx}`} className={`browser-answer${isCorrect ? ' correct' : ''}`}>
+                        <span className="choice-label">{String.fromCharCode(65 + idx)}.</span>
+                        <span>{answer}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div className="browser-detail-panel">
+                <div className="practice-review-header">
+                  <SectionTabs items={[...DETAIL_TABS]} activeId={detailTab} onChange={(id) => setDetailTab(id as 'overview' | 'review' | 'history')} />
+                </div>
+
+                <div className="browser-detail-panel-content">
+                  {detailTab === 'overview' ? (
+                    <div className="browser-overview-grid">
+                      <div className="browser-overview-row">
+                        <span className="mode-config-label">Reference</span>
+                        <p className="meta">{selectedQuestion.refs || 'N/A'}</p>
+                      </div>
+                      {selectedQuestion.hint ? (
+                        <div className="browser-overview-row">
+                          <span className="mode-config-label">Hint</span>
+                          <p className="meta">{selectedQuestion.hint}</p>
+                        </div>
+                      ) : null}
+                      {selectedQuestion.mnemonic ? (
+                        <div className="browser-overview-row">
+                          <span className="mode-config-label">Mnemonic</span>
+                          <p className="meta">{selectedQuestion.mnemonic}</p>
+                        </div>
+                      ) : null}
+                      <div className="browser-overview-row">
+                        <span className="mode-config-label">Review</span>
+                        <p className="meta">Open the `Review` tab for the full explanation and alternate tutoring help.</p>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {detailTab === 'review' ? (
+                    <ExplanationPanel question={selectedQuestion} submitted={true} showWhenUnsubmitted hasAiProvider={hasAiProvider} />
+                  ) : null}
+
+                  {detailTab === 'history' && selectedDetail ? (
+                    <div className="browser-history-panel">
+                      <div className="stats-grid">
+                        <StatPill label="Attempts" value={selectedDetail.historySummary.attempts} />
+                        <StatPill label="Accuracy" value={`${selectedDetail.historySummary.accuracyPct}%`} />
+                        <StatPill label="Avg Time" value={`${Math.round(selectedDetail.historySummary.averageTimeMs)} ms`} />
+                        <StatPill label="Last Answered" value={formatTimestamp(selectedDetail.historySummary.lastAnsweredAt)} />
+                      </div>
+
+                      <div className="stats-grid">
+                        <StatPill label="SRS Repetitions" value={selectedDetail.srsCard?.repetitions ?? 0} />
+                        <StatPill label="SRS Interval" value={selectedDetail.srsCard ? `${selectedDetail.srsCard.interval} d` : 'Not started'} />
+                        <StatPill
+                          label="SRS Ease"
+                          value={selectedDetail.srsCard ? selectedDetail.srsCard.easeFactor.toFixed(2) : 'Not started'}
+                        />
+                        <StatPill
+                          label="Next Review"
+                          value={selectedDetail.srsCard ? formatTimestamp(selectedDetail.srsCard.nextReview) : 'Not scheduled'}
+                        />
+                      </div>
+
+                      <div>
+                        <p className="meta">Recent Answers</p>
+                        {selectedDetail.recentAnswers.length === 0 ? (
+                          <p className="meta">No answer history for this question yet.</p>
+                        ) : (
+                          <ul className="browser-history-list">
+                            {selectedDetail.recentAnswers.map((answer) => (
+                              <li key={answer.id} className="browser-history-item">
+                                {formatTimestamp(answer.answeredAt)} • Choice {String.fromCharCode(65 + answer.selectedIndex)} •{' '}
+                                {answer.isCorrect ? 'Correct' : 'Incorrect'} • {answer.timeTakenMs} ms
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
             </div>
           ) : null}
 

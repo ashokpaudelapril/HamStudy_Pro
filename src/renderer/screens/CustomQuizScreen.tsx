@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ipcBridge, type ProgressStats } from '@shared/ipcBridge'
+import { ipcBridge } from '@shared/ipcBridge'
 import type { ExamTier, Question } from '@shared/types'
+import { ModeBar } from '../components/ModeBar'
 import { QuestionCard } from '../components/QuestionCard'
-import { ScreenHeader } from '../components/ScreenHeader'
-import { StatPill } from '../components/StatPill'
+import { SectionTabs } from '../components/SectionTabs'
 import { useSRS } from '../hooks/useSRS'
 
 type CustomQuizScreenProps = {
@@ -34,6 +34,11 @@ type SessionSummary = {
 // HOW CODE SOLVES: Loads available sub-elements for selected tier, builds a filtered
 //                  randomized pool, then runs the existing submit/feedback cycle.
 export function CustomQuizScreen({ onBackToModes, onAskAboutQuestion, onExplainDifferently }: CustomQuizScreenProps) {
+  const TABS = [
+    { id: 'setup', label: 'Setup' },
+    { id: 'practice', label: 'Practice Workspace' },
+  ] as const
+  const [activeTab, setActiveTab] = useState<(typeof TABS)[number]['id']>('setup')
   const [phase, setPhase] = useState<ScreenPhase>('builder')
   const [tier, setTier] = useState<ExamTier>('technician')
   const [questionCount, setQuestionCount] = useState<number>(20)
@@ -50,7 +55,6 @@ export function CustomQuizScreen({ onBackToModes, onAskAboutQuestion, onExplainD
   const [submitted, setSubmitted] = useState<boolean>(false)
   const [startedAt, setStartedAt] = useState<number>(0)
   const [isSrsBridgeAvailable, setIsSrsBridgeAvailable] = useState(true)
-  const [globalStats, setGlobalStats] = useState<ProgressStats | null>(null)
   const [sessionSummary, setSessionSummary] = useState<SessionSummary>({ attempted: 0, correct: 0 })
   const [sessionId, setSessionId] = useState<string>(() => `custom-${Date.now()}`)
   const { recordReview, resetLocalCards } = useSRS()
@@ -75,13 +79,6 @@ export function CustomQuizScreen({ onBackToModes, onAskAboutQuestion, onExplainD
     setSelectedSubElements([])
     setLoading(false)
   }, [tier])
-
-  // TASK: Keep top-bar aggregate progress visible while in custom mode.
-  // HOW CODE SOLVES: Reuses existing persisted progress stat endpoint.
-  const refreshGlobalStats = useCallback(async (): Promise<void> => {
-    const stats = await ipcBridge.getProgressStats()
-    setGlobalStats(stats)
-  }, [])
 
   // TASK: Toggle inclusion of a sub-element in custom filter selection.
   // HOW CODE SOLVES: Adds/removes from local selected set while preserving click order.
@@ -124,6 +121,7 @@ export function CustomQuizScreen({ onBackToModes, onAskAboutQuestion, onExplainD
         setSessionSummary({ attempted: 0, correct: 0 })
         setSessionId(`custom-${Date.now()}`)
         setPhase('quiz')
+        setActiveTab('practice')
       })
       .catch((err: unknown) => {
         const details = err instanceof Error ? err.message : String(err)
@@ -177,7 +175,6 @@ export function CustomQuizScreen({ onBackToModes, onAskAboutQuestion, onExplainD
           setIsSrsBridgeAvailable(false)
         }
 
-        await refreshGlobalStats()
       })
       .catch((err: unknown) => {
         const details = err instanceof Error ? err.message : String(err)
@@ -216,6 +213,7 @@ export function CustomQuizScreen({ onBackToModes, onAskAboutQuestion, onExplainD
     setSessionSummary({ attempted: 0, correct: 0 })
     setSessionId(`custom-${Date.now()}`)
     setPhase('quiz')
+    setActiveTab('practice')
   }
 
   // TASK: Return from quiz phase to filter builder without leaving mode.
@@ -235,7 +233,7 @@ export function CustomQuizScreen({ onBackToModes, onAskAboutQuestion, onExplainD
   useEffect(() => {
     void (async () => {
       try {
-        await Promise.all([loadSubElements(), refreshGlobalStats()])
+        await Promise.all([loadSubElements()])
       } catch (err: unknown) {
         const details = err instanceof Error ? err.message : String(err)
         if (details.includes('IPC bridge is not available')) {
@@ -246,38 +244,29 @@ export function CustomQuizScreen({ onBackToModes, onAskAboutQuestion, onExplainD
         setLoading(false)
       }
     })()
-  }, [loadSubElements, refreshGlobalStats])
+  }, [loadSubElements])
 
   const accuracy =
     sessionSummary.attempted > 0 ? Number(((sessionSummary.correct / sessionSummary.attempted) * 100).toFixed(2)) : 0
 
   return (
     <main className="app-shell">
-      <ScreenHeader
-        title="HamStudy Pro"
-        subtitle="Custom Quiz"
+      <ModeBar
+        title="Custom Quiz"
+        onBack={onBackToModes}
         actions={
-          <>
-            {phase === 'quiz' ? (
-              <button type="button" className="ghost-btn" onClick={handleBackToBuilder}>
-                Back to Builder
-              </button>
-            ) : null}
-            <button type="button" className="ghost-btn" onClick={onBackToModes}>
-              Back to Modes
+          phase === 'quiz' ? (
+            <button type="button" className="ghost-btn" onClick={handleBackToBuilder}>
+              Builder
             </button>
-          </>
-        }
-        stats={
-          <>
-            <StatPill label="Session Attempted" value={sessionSummary.attempted} />
-            <StatPill label="Session Accuracy" value={`${accuracy}%`} />
-            <StatPill label="Global Answers" value={globalStats?.totalAnswers ?? 0} />
-            <StatPill label="Global Accuracy" value={`${globalStats?.accuracyPct ?? 0}%`} />
-          </>
+          ) : undefined
         }
       />
 
+      <SectionTabs items={[...TABS]} activeId={activeTab} onChange={(id) => setActiveTab(id as any)} />
+
+      {activeTab === 'setup' ? (
+        <div className="app-shell-scroll">
       {phase === 'builder' ? (
         <section className="panel mode-config-panel custom-builder-panel">
           <div className="mode-config-card">
@@ -361,8 +350,17 @@ export function CustomQuizScreen({ onBackToModes, onAskAboutQuestion, onExplainD
           {loading ? <p>Loading custom quiz builder data...</p> : null}
           {error ? <p className="error-text">{error}</p> : null}
         </section>
+      ) : (
+        <section className="panel">
+          <p className="meta">A quiz session is currently running. Switch to the Practice Workspace tab to resume, or reset the quiz below.</p>
+          <button type="button" className="danger-btn" onClick={handleBackToBuilder}>Discard Session and Reconfigure</button>
+        </section>
+      )}
+      </div>
       ) : null}
 
+      {activeTab === 'practice' ? (
+        <div className="app-shell-fixed">
       {phase === 'complete' ? (
         <section className="panel">
           <p className="mode-tagline">Quiz complete — all {questions.length} questions answered.</p>
@@ -381,7 +379,7 @@ export function CustomQuizScreen({ onBackToModes, onAskAboutQuestion, onExplainD
       ) : null}
 
       {phase === 'quiz' ? (
-        <section className="panel question-panel">
+        <section className="panel scroll-pane question-panel" style={{ flex: 1 }}>
           {error ? <p className="error-text">{error}</p> : null}
           {!isSrsBridgeAvailable ? <p className="meta">SRS updates unavailable in this run. Restart app to re-enable.</p> : null}
           {currentSubElementLabel ? <p className="meta">{currentSubElementLabel}</p> : null}
@@ -434,6 +432,12 @@ export function CustomQuizScreen({ onBackToModes, onAskAboutQuestion, onExplainD
             <p>No custom quiz questions available.</p>
           )}
         </section>
+      ) : phase === 'builder' ? (
+        <section className="panel">
+          <p className="meta">Configure your parameters in the Setup tab and start the quiz to begin.</p>
+        </section>
+      ) : null}
+      </div>
       ) : null}
     </main>
   )

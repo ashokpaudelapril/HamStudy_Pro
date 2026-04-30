@@ -1,7 +1,9 @@
-import { lazy, Suspense, useEffect, useState, type ReactElement } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { ipcBridge } from '@shared/ipcBridge'
 import type { Question, UserSettings } from '@shared/types'
 import { StudyModeSelect } from './screens/StudyModeSelect'
+import { Layout } from './components/Layout'
+import type { Tab } from './components/WorkspaceTabs'
 
 const AchievementsScreen = lazy(() =>
   import('./screens/Achievements').then((module) => ({ default: module.AchievementsScreen })),
@@ -63,6 +65,24 @@ type StudyMode =
   | 'exam'
   | 'reference'
 
+const MODE_LABELS: Record<StudyMode, string> = {
+  select: 'HOME_LAUNCHER',
+  dashboard: 'DASHBOARD_FEED',
+  analytics: 'SYSTEM_ANALYTICS',
+  'mastery-map': 'KNOWLEDGE_MAP',
+  achievements: 'OPERATOR_BADGES',
+  settings: 'SYS_CONFIG',
+  'tutor-chat': 'ELMER_AI_LLM',
+  quiz: 'PRACTICE_QUIZ',
+  flashcard: 'FLASHCARDS',
+  speed: 'SPEED_ROUND',
+  'weak-area': 'DIAGNOSTIC_DRILL',
+  custom: 'CUSTOM_WIZARD',
+  browser: 'QUESTION_DB',
+  exam: 'EXAM_SIMULATOR',
+  reference: 'REF_DOCS'
+}
+
 type TutorChatContext = {
   questionId?: string
   questionLabel?: string
@@ -71,14 +91,11 @@ type TutorChatContext = {
 }
 
 function App() {
-  const [mode, setMode] = useState<StudyMode>('select')
+  const [activeTabId, setActiveTabId] = useState<StudyMode>('select')
+  const [openTabs, setOpenTabs] = useState<StudyMode[]>(['select'])
   const [tutorChatContext, setTutorChatContext] = useState<TutorChatContext | null>(null)
 
   useEffect(() => {
-    // TASK: Apply persisted visual settings globally at app startup, with system theme detection.
-    // HOW CODE SOLVES: Resolves 'system' theme to 'dark'/'light' via matchMedia so the correct
-    //                  CSS variable block activates. Attaches a listener so OS-level dark-mode
-    //                  toggles are reflected in real-time while theme is set to 'system'.
     function resolveAndApplyTheme(theme: string): void {
       const resolved =
         theme === 'system'
@@ -116,19 +133,26 @@ function App() {
     }
   }, [])
 
-  useEffect(() => {
-    // TASK: Start every mode at the top of the screen instead of preserving the
-    //       previous screen's scroll position.
-    // HOW CODE SOLVES: Resets both window and document scroll containers whenever
-    //                  the active top-level mode changes in this single-page renderer.
-    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
-    document.documentElement.scrollTop = 0
-    document.body.scrollTop = 0
-  }, [mode])
+  // Handle mode changes (from rail or launcher)
+  const handleModeChange = (mode: StudyMode) => {
+    if (!openTabs.includes(mode)) {
+      setOpenTabs(prev => [...prev, mode])
+    }
+    setActiveTabId(mode)
+  }
 
-  // TASK: Open Tutor Chat with optional active-question context from another screen.
-  // HOW CODE SOLVES: Stores the source mode plus selected FCC question metadata
-  //                  so Tutor Chat can inject `questionId` into IPC requests and route back cleanly.
+  const handleCloseTab = (id: string) => {
+    const modeId = id as StudyMode
+    if (openTabs.length <= 1) return
+    
+    const newTabs = openTabs.filter(t => t !== modeId)
+    setOpenTabs(newTabs)
+    
+    if (activeTabId === modeId) {
+      setActiveTabId(newTabs[newTabs.length - 1])
+    }
+  }
+
   function openTutorChatFrom(
     sourceMode: Exclude<StudyMode, 'tutor-chat'>,
     question?: Question,
@@ -140,121 +164,98 @@ function App() {
       questionLabel: question ? `${question.id} • ${question.subElement}` : undefined,
       initialMessage,
     })
-    setMode('tutor-chat')
+    handleModeChange('tutor-chat')
   }
 
-  // TASK: Route back out of Tutor Chat to the originating screen when possible.
-  // HOW CODE SOLVES: Falls back to mode select only when chat was opened without a tracked source mode.
   function handleBackFromTutorChat(): void {
-    setMode(tutorChatContext?.sourceMode ?? 'select')
+    handleModeChange(tutorChatContext?.sourceMode ?? 'select')
   }
 
-  // TASK: Route between mode selection and active study screens.
-  // HOW CODE SOLVES: Holds top-level mode state and maps each mode to its screen.
   const alternateExplanationPrompt =
     'Please explain this question in a different way, using a simpler explanation or a new analogy, without giving away the answer directly.'
 
-  // ISSUE: Mode changes showed a temporary "Loading the requested study screen..." panel
-  //        while lazy-loaded screens resolved, which felt like an extra transition window.
-  // FIX APPLIED: Use a non-visual Suspense fallback so mode switches stay direct and
-  //              don't flash intermediate loading text between screens.
   const loadingFallback = null
 
-  let activeScreen: ReactElement | null = null
+  const tabs: Tab[] = openTabs.map(id => ({
+    id,
+    label: MODE_LABELS[id],
+    active: activeTabId === id
+  }))
 
-  if (mode === 'select') {
-    activeScreen = <StudyModeSelect onSelectMode={setMode} />
-  } else if (mode === 'quiz') {
-    activeScreen = (
+  const renderActiveScreen = (mode: StudyMode) => {
+    if (mode === 'select') return <StudyModeSelect onSelectMode={handleModeChange} />
+    if (mode === 'quiz') return (
       <QuestionScreen
-        onBackToModes={() => setMode('select')}
+        onBackToModes={() => handleModeChange('select')}
         onAskAboutQuestion={(question) => openTutorChatFrom('quiz', question)}
-        onExplainDifferently={(question) =>
-          openTutorChatFrom('quiz', question, alternateExplanationPrompt)
-        }
+        onExplainDifferently={(question) => openTutorChatFrom('quiz', question, alternateExplanationPrompt)}
       />
     )
-  } else if (mode === 'dashboard') {
-    activeScreen = <DashboardScreen onBackToModes={() => setMode('select')} onStartDailyChallenge={() => setMode('weak-area')} />
-  } else if (mode === 'analytics') {
-    activeScreen = <AnalyticsScreen onBackToModes={() => setMode('select')} />
-  } else if (mode === 'mastery-map') {
-    activeScreen = <MasteryMapScreen onBackToModes={() => setMode('select')} onOpenQuestionBrowser={() => setMode('browser')} />
-  } else if (mode === 'settings') {
-    activeScreen = <SettingsScreen onBackToModes={() => setMode('select')} />
-  } else if (mode === 'tutor-chat') {
-    activeScreen = <TutorChatScreen onBackToModes={handleBackFromTutorChat} chatContext={tutorChatContext} />
-  } else if (mode === 'flashcard') {
-    activeScreen = (
+    if (mode === 'dashboard') return <DashboardScreen onBackToModes={() => handleModeChange('select')} onStartDailyChallenge={() => handleModeChange('weak-area')} />
+    if (mode === 'analytics') return <AnalyticsScreen onBackToModes={() => handleModeChange('select')} />
+    if (mode === 'mastery-map') return <MasteryMapScreen onBackToModes={() => handleModeChange('select')} onOpenQuestionBrowser={() => handleModeChange('browser')} />
+    if (mode === 'settings') return <SettingsScreen onBackToModes={() => handleModeChange('select')} />
+    if (mode === 'tutor-chat') return <TutorChatScreen onBackToModes={handleBackFromTutorChat} chatContext={tutorChatContext} />
+    if (mode === 'flashcard') return (
       <FlashcardScreen
-        onBackToModes={() => setMode('select')}
+        onBackToModes={() => handleModeChange('select')}
         onAskAboutQuestion={(question) => openTutorChatFrom('flashcard', question)}
-        onExplainDifferently={(question) =>
-          openTutorChatFrom('flashcard', question, alternateExplanationPrompt)
-        }
+        onExplainDifferently={(question) => openTutorChatFrom('flashcard', question, alternateExplanationPrompt)}
       />
     )
-  } else if (mode === 'speed') {
-    activeScreen = (
+    if (mode === 'speed') return (
       <SpeedRoundScreen
-        onBackToModes={() => setMode('select')}
+        onBackToModes={() => handleModeChange('select')}
         onAskAboutQuestion={(question) => openTutorChatFrom('speed', question)}
-        onExplainDifferently={(question) =>
-          openTutorChatFrom('speed', question, alternateExplanationPrompt)
-        }
+        onExplainDifferently={(question) => openTutorChatFrom('speed', question, alternateExplanationPrompt)}
       />
     )
-  } else if (mode === 'weak-area') {
-    activeScreen = (
+    if (mode === 'weak-area') return (
       <WeakAreaScreen
-        onBackToModes={() => setMode('select')}
+        onBackToModes={() => handleModeChange('select')}
         onAskAboutQuestion={(question) => openTutorChatFrom('weak-area', question)}
-        onExplainDifferently={(question) =>
-          openTutorChatFrom('weak-area', question, alternateExplanationPrompt)
-        }
+        onExplainDifferently={(question) => openTutorChatFrom('weak-area', question, alternateExplanationPrompt)}
       />
     )
-  } else if (mode === 'custom') {
-    activeScreen = (
+    if (mode === 'custom') return (
       <CustomQuizScreen
-        onBackToModes={() => setMode('select')}
+        onBackToModes={() => handleModeChange('select')}
         onAskAboutQuestion={(question) => openTutorChatFrom('custom', question)}
-        onExplainDifferently={(question) =>
-          openTutorChatFrom('custom', question, alternateExplanationPrompt)
-        }
+        onExplainDifferently={(question) => openTutorChatFrom('custom', question, alternateExplanationPrompt)}
       />
     )
-  } else if (mode === 'browser') {
-    activeScreen = (
+    if (mode === 'browser') return (
       <QuestionBrowserScreen
-        onBackToModes={() => setMode('select')}
+        onBackToModes={() => handleModeChange('select')}
         onAskAboutQuestion={(question) => openTutorChatFrom('browser', question)}
-        onExplainDifferently={(question) =>
-          openTutorChatFrom('browser', question, alternateExplanationPrompt)
-        }
+        onExplainDifferently={(question) => openTutorChatFrom('browser', question, alternateExplanationPrompt)}
       />
     )
-  } else if (mode === 'exam') {
-    activeScreen = (
+    if (mode === 'exam') return (
       <ExamSimulatorScreen
-        onBackToModes={() => setMode('select')}
+        onBackToModes={() => handleModeChange('select')}
         onAskAboutQuestion={(question) => openTutorChatFrom('exam', question)}
-        onExplainDifferently={(question) =>
-          openTutorChatFrom('exam', question, alternateExplanationPrompt)
-        }
+        onExplainDifferently={(question) => openTutorChatFrom('exam', question, alternateExplanationPrompt)}
       />
     )
-  } else if (mode === 'reference') {
-    activeScreen = <ReferenceSheetsScreen onBackToModes={() => setMode('select')} />
-  } else if (mode === 'achievements') {
-    activeScreen = <AchievementsScreen onBackToModes={() => setMode('select')} />
+    if (mode === 'reference') return <ReferenceSheetsScreen onBackToModes={() => handleModeChange('select')} />
+    if (mode === 'achievements') return <AchievementsScreen onBackToModes={() => handleModeChange('select')} />
+    return null
   }
 
   return (
     <Suspense fallback={loadingFallback}>
-      <div key={mode} className="mode-transition-shell">
-        {activeScreen}
-      </div>
+      <Layout 
+        activeMode={activeTabId} 
+        onModeChange={handleModeChange}
+        tabs={tabs}
+        onSelectTab={(id) => setActiveTabId(id as StudyMode)}
+        onCloseTab={handleCloseTab}
+      >
+        <div key={activeTabId} className="workspace-pane-wrapper">
+          {renderActiveScreen(activeTabId)}
+        </div>
+      </Layout>
     </Suspense>
   )
 }

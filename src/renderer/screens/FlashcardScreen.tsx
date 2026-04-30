@@ -1,10 +1,10 @@
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
-import { ipcBridge, type ProgressStats } from '@shared/ipcBridge'
+import { ipcBridge } from '@shared/ipcBridge'
 import type { ExamTier, Question } from '@shared/types'
 import { HintPanel } from '../components/HintPanel'
+import { ModeBar } from '../components/ModeBar'
 import { QuestionFigure } from '../components/QuestionFigure'
-import { ScreenHeader } from '../components/ScreenHeader'
-import { StatPill } from '../components/StatPill'
+import { SectionTabs } from '../components/SectionTabs'
 import { useSRS } from '../hooks/useSRS'
 
 type FlashcardScreenProps = {
@@ -17,6 +17,16 @@ type FlashcardScreenProps = {
 // HOW CODE SOLVES: Supports search, reveal/hide behavior, next-card navigation,
 //                  and progress event persistence (`progress:save-answer`) for stats.
 export function FlashcardScreen({ onBackToModes, onAskAboutQuestion, onExplainDifferently }: FlashcardScreenProps) {
+  const TABS = [
+    { id: 'setup', label: 'Setup' },
+    { id: 'practice', label: 'Practice Workspace' },
+  ] as const
+  const PRACTICE_TABS = [
+    { id: 'card', label: 'Card' },
+    { id: 'tools', label: 'Tools' },
+  ] as const
+  const [activeTab, setActiveTab] = useState<(typeof TABS)[number]['id']>('setup')
+  const [practiceTab, setPracticeTab] = useState<(typeof PRACTICE_TABS)[number]['id']>('card')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [tier, setTier] = useState<ExamTier>('technician')
@@ -29,7 +39,6 @@ export function FlashcardScreen({ onBackToModes, onAskAboutQuestion, onExplainDi
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [revealed, setRevealed] = useState(false)
-  const [stats, setStats] = useState<ProgressStats | null>(null)
   const [isSrsBridgeAvailable, setIsSrsBridgeAvailable] = useState(true)
   const [questionStartedAt, setQuestionStartedAt] = useState<number>(0)
   const [error, setError] = useState<string | null>(null)
@@ -44,7 +53,6 @@ export function FlashcardScreen({ onBackToModes, onAskAboutQuestion, onExplainDi
   const isInitialLoad = loading && !hasQuestion
   const isRefreshingDeck = loading && hasQuestion
   const progressPct = deckQuestions.length > 0 ? Math.round(((currentIndex + 1) / deckQuestions.length) * 100) : 0
-  const hasActiveFilters = selectedSubElements.length > 0 || appliedSearchText.length > 0
   const deckFocusSummary = selectedSubElements.length > 0 ? selectedSubElements.join(', ') : 'All topics'
   const searchSummary = appliedSearchText.length > 0 ? appliedSearchText : 'None'
 
@@ -93,13 +101,6 @@ export function FlashcardScreen({ onBackToModes, onAskAboutQuestion, onExplainDi
       question.groupId,
     ].some((value) => value.toLowerCase().includes(normalized))
   }
-
-  // TASK: Load aggregate progress stats for flashcard header metrics.
-  // HOW CODE SOLVES: Reads persisted progress from the same shared IPC endpoint used by quiz mode.
-  const refreshStats = useCallback(async (): Promise<void> => {
-    const nextStats = await ipcBridge.getProgressStats()
-    setStats(nextStats)
-  }, [])
 
   const getTierPool = useCallback(async (activeTier: ExamTier): Promise<Question[]> => {
     const cachedPool = poolCacheRef.current[activeTier]
@@ -247,7 +248,6 @@ export function FlashcardScreen({ onBackToModes, onAskAboutQuestion, onExplainDi
           setIsSrsBridgeAvailable(false)
         }
 
-        await refreshStats()
       })
       .catch((err: unknown) => {
         const details = err instanceof Error ? err.message : String(err)
@@ -343,7 +343,6 @@ export function FlashcardScreen({ onBackToModes, onAskAboutQuestion, onExplainDi
     void (async () => {
       try {
         await Promise.all([
-          refreshStats(),
           runSearch('', 'technician', {
             subElements: [],
             randomize: true,
@@ -356,7 +355,7 @@ export function FlashcardScreen({ onBackToModes, onAskAboutQuestion, onExplainDi
         setLoading(false)
       }
     })()
-  }, [refreshStats, runSearch])
+  }, [runSearch])
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -384,24 +383,12 @@ export function FlashcardScreen({ onBackToModes, onAskAboutQuestion, onExplainDi
 
   return (
     <main className="app-shell">
-      <ScreenHeader
-        title="HamStudy Pro"
-        subtitle={`${formatTierLabel(tier)} Flashcards`}
-        actions={
-          <button type="button" className="ghost-btn" onClick={onBackToModes}>
-            Back to Modes
-          </button>
-        }
-        stats={
-          <>
-            <StatPill label="Deck size" value={deckQuestions.length} icon="🗂️" />
-            <StatPill label="All-time answers" value={stats?.totalAnswers ?? 0} icon="📊" />
-            <StatPill label="All-time correct" value={stats?.correctAnswers ?? 0} icon="✅" />
-            <StatPill label="All-time accuracy" value={`${stats?.accuracyPct ?? 0}%`} icon="🎯" />
-          </>
-        }
-      />
+      <ModeBar title={`${formatTierLabel(tier)} Flashcards`} onBack={onBackToModes} />
 
+      <SectionTabs items={[...TABS]} activeId={activeTab} onChange={(id) => setActiveTab(id as any)} />
+
+      {activeTab === 'setup' ? (
+        <div className="app-shell-scroll">
       <section className="panel mode-config-panel">
         <div className="mode-config-card">
           <span className="mode-config-label">Tier</span>
@@ -503,33 +490,22 @@ export function FlashcardScreen({ onBackToModes, onAskAboutQuestion, onExplainDi
           </div>
         </div>
       </section>
+      </div>
+      ) : null}
 
-      <section className="panel question-session-overview">
-        <div className="question-session-overview-row">
-          <div className="question-session-card">
-            <span className="question-session-label">Deck focus</span>
-            <strong>{deckFocusSummary}</strong>
-            <p>{hasActiveFilters ? 'Built from your selected topics or search filter.' : 'Using the full tier question pool.'}</p>
-          </div>
-          <div className="question-session-card">
-            <span className="question-session-label">Deck order</span>
-            <strong>{randomizeDeck ? 'Randomized' : 'Sequential'}</strong>
-            <p>{randomizeDeck ? 'Better for recall and confidence checks.' : 'Better for methodical topic review.'}</p>
-          </div>
-          <div className="question-session-card">
-            <span className="question-session-label">Search filter</span>
-            <strong>{searchSummary}</strong>
-            <p>Active tier: {formatTierLabel(tier)}</p>
-          </div>
+      {activeTab === 'practice' ? (
+        <div className="app-shell-fixed">
+      <section className="flashcard-utility-strip">
+        <div className="flashcard-utility-summary mono-data">
+          <span>{formatTierLabel(tier)}</span>
+          <span>{randomizeDeck ? 'Randomized' : 'Sequential'}</span>
+          <span>{deckFocusSummary}</span>
+          <span>Search {searchSummary}</span>
+          {hasQuestion ? <span>Card {currentIndex + 1}/{deckQuestions.length}</span> : null}
         </div>
         {hasQuestion ? (
-          <div className="question-session-progress" aria-label="Flashcard session progress">
-            <div className="question-session-progress-copy">
-              <strong>
-                Card {currentIndex + 1} of {deckQuestions.length}
-              </strong>
-              <span>{progressPct}% through deck</span>
-            </div>
+          <div className="flashcard-progress-inline" aria-label="Flashcard session progress">
+            <span>{progressPct}%</span>
             <div
               className="question-session-progress-bar"
               role="progressbar"
@@ -540,54 +516,17 @@ export function FlashcardScreen({ onBackToModes, onAskAboutQuestion, onExplainDi
               <span style={{ width: `${progressPct}%` }} />
             </div>
           </div>
-        ) : (
-          <p className="meta">Adjust topics or search to build a fresh study deck.</p>
-        )}
+        ) : null}
+        <SectionTabs items={[...PRACTICE_TABS]} activeId={practiceTab} onChange={(id) => setPracticeTab(id as 'card' | 'tools')} />
       </section>
 
-      <section className="panel">
-        <div className="action-row">
-          <button
-            type="button"
-            className="ghost-btn"
-            onClick={handleSpeak}
-            disabled={saving || loading || !currentQuestion || voiceBusy}
-          >
-            Read Aloud
-          </button>
-          <button type="button" className="ghost-btn" onClick={() => ipcBridge.stopSpeech()} disabled={saving || !voiceBusy}>
-            Stop Voice
-          </button>
-          <button
-            type="button"
-            className="ghost-btn"
-            onClick={() => currentQuestion && onAskAboutQuestion?.(currentQuestion)}
-            disabled={saving || loading || !currentQuestion}
-          >
-            Ask About This Question
-          </button>
-          {revealed ? (
-            <button
-              type="button"
-              className="ghost-btn"
-              onClick={() => currentQuestion && onExplainDifferently?.(currentQuestion)}
-              disabled={saving || loading || !currentQuestion}
-            >
-              Explain It Differently
-            </button>
-          ) : null}
-        </div>
-        {voiceStatus ? <p className="meta">Voice: {voiceStatus}</p> : null}
-        <p className="meta">Tip: use Cmd/Ctrl + R to read the current flashcard aloud.</p>
-      </section>
-
-      <section className="panel question-panel">
+      <section className="panel scroll-pane question-panel" style={{ flex: 1 }}>
         {isInitialLoad ? <p>Loading flashcards...</p> : null}
         {isRefreshingDeck ? <p className="meta">Refreshing flashcards...</p> : null}
         {error ? <p className="error-text">{error}</p> : null}
         {!isSrsBridgeAvailable ? <p className="meta">SRS updates unavailable in this run. Restart app to re-enable.</p> : null}
 
-        {!error && hasQuestion && currentQuestion ? (
+        {!error && hasQuestion && currentQuestion && practiceTab === 'card' ? (
           <>
             <p className="meta">
               {currentQuestion.id} • Card {currentIndex + 1} of {deckQuestions.length}
@@ -623,9 +562,8 @@ export function FlashcardScreen({ onBackToModes, onAskAboutQuestion, onExplainDi
                       <strong>{String.fromCharCode(65 + index)}.</strong>
                       <div className="flashcard-option-copy">
                         <span>{answer}</span>
-                        {revealed ? <p>{getChoiceNote(currentQuestion, index)}</p> : null}
                       </div>
-                      {revealed ? <em>{isCorrect ? 'Correct answer' : 'Other option'}</em> : null}
+                      {revealed && isCorrect ? <em>Correct answer</em> : null}
                     </div>
                   )
                 })}
@@ -652,9 +590,69 @@ export function FlashcardScreen({ onBackToModes, onAskAboutQuestion, onExplainDi
                 Next Card
               </button>
             </div>
-
-            <HintPanel key={currentQuestion.id} question={currentQuestion} title="Flashcard Help" />
           </>
+        ) : null}
+
+        {!error && hasQuestion && currentQuestion && practiceTab === 'tools' ? (
+          <section className="flashcard-tools-panel">
+            <div className="flashcard-tools-actions">
+              <button
+                type="button"
+                className="ghost-btn"
+                onClick={handleSpeak}
+                disabled={saving || loading || !currentQuestion || voiceBusy}
+              >
+                Read Aloud
+              </button>
+              <button type="button" className="ghost-btn" onClick={() => ipcBridge.stopSpeech()} disabled={saving || !voiceBusy}>
+                Stop Voice
+              </button>
+              <button
+                type="button"
+                className="ghost-btn"
+                onClick={() => currentQuestion && onAskAboutQuestion?.(currentQuestion)}
+                disabled={saving || loading || !currentQuestion}
+              >
+                Ask About This Question
+              </button>
+              {revealed ? (
+                <button
+                  type="button"
+                  className="ghost-btn"
+                  onClick={() => currentQuestion && onExplainDifferently?.(currentQuestion)}
+                  disabled={saving || loading || !currentQuestion}
+                >
+                  Explain It Differently
+                </button>
+              ) : null}
+            </div>
+            {voiceStatus ? <p className="meta">Voice: {voiceStatus}</p> : null}
+            <p className="meta">Tip: use Cmd/Ctrl + R to read the current flashcard aloud.</p>
+            {revealed ? (
+              <section className="flashcard-review-panel">
+
+                <div className="flashcard-option-list flashcard-option-list-review" aria-label="Flashcard answer analysis">
+                  {currentQuestion.answers.map((answer, index) => {
+                    const isCorrect = index === currentQuestion.correctIndex
+                    return (
+                      <div
+                        key={`${currentQuestion.id}-flashcard-review-choice-${index}`}
+                        className={`flashcard-option-row${isCorrect ? ' is-correct' : ''}`}
+                      >
+                        <strong>{String.fromCharCode(65 + index)}.</strong>
+                        <div className="flashcard-option-copy">
+                          <span>{answer}</span>
+                          <p>{getChoiceNote(currentQuestion, index)}</p>
+                        </div>
+                        <em>{isCorrect ? 'Correct answer' : 'Other option'}</em>
+                      </div>
+                    )
+                  })}
+                </div>
+              </section>
+            ) : null}
+            <HintPanel key={currentQuestion.id} question={currentQuestion} title="Flashcard Help" />
+          </section>
         ) : null}
 
         {!loading && !error && !hasQuestion ? (
@@ -680,6 +678,8 @@ export function FlashcardScreen({ onBackToModes, onAskAboutQuestion, onExplainDi
           </section>
         ) : null}
       </section>
+      </div>
+      ) : null}
     </main>
   )
 }

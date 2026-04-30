@@ -1,0 +1,192 @@
+/**
+ * LAYOUT SYSTEM
+ *
+ * Single source of truth for page structure.
+ *
+ * Rules:
+ *   1. The outer shell (.page-shell) never scrolls.
+ *   2. Every page is divided into fixed rows — content gets 1fr, everything else is fixed px.
+ *   3. Section panels use ONLY a tab bar as their header — no title text above the tabs.
+ *   4. If content won't fit, switch to a tab instead of scrolling.
+ */
+
+/* ─── PAGE SHELL ──────────────────────────────────────────────── */
+
+/*
+ * Standard layout: toolbar | content | support panel | footer
+ * Adjust with modifier classes below.
+ */
+.page-shell {
+  display: grid;
+  grid-template-rows: 48px 1fr 192px 52px;
+  gap: 12px;
+  padding: 12px;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* No bottom support panel */
+.page-shell.no-support {
+  grid-template-rows: 48px 1fr 52px;
+}
+
+/* No footer action bar */
+.page-shell.no-footer {
+  grid-template-rows: 48px 1fr 192px;
+}
+
+/* Neither support nor footer — used by launcher / browser */
+.page-shell.bare {
+  grid-template-rows: 48px 1fr;
+}
+
+/* Launcher variant — taller header zone */
+.page-shell.launcher {
+  grid-template-rows: auto 1fr;
+  gap: 16px;
+}
+
+/* ─── CONTENT ZONES ───────────────────────────────────────────── */
+
+/* Any area that must stay within its grid row */
+.zone {
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Zone that may overflow vertically (use sparingly) */
+.zone.scrolls {
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+}
+
+/* ─── SECTION PANEL ───────────────────────────────────────────── */
+
+/*
+ * A bordered panel with two children:
+ *   .panel-header  — tab bar only, max 44px tall
+ *   .panel-body    — content, fills remaining height
+ *
+ * DO NOT put a title, eyebrow, or heading inside .panel-header.
+ * The tab labels are the only identifier needed.
+ */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  overflow: hidden;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 12px;
+  height: 44px;
+  border-bottom: var(--border-thin);
+  background: color-mix(in srgb, var(--surface-container) 52%, var(--surface-raised));
+  flex-shrink: 0;
+}
+
+/* Optional tiny label on the left side of the header (not a heading — just a tag) */
+.panel-tag {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-family: var(--font-mono);
+}
+
+.panel-body {
+  flex: 1;
+  min-height: 0;
+  padding: 12px;
+  overflow: hidden;
+}
+
+.panel-body.scrolls {
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+}
+
+/* ─── PAGE TOOLBAR ────────────────────────────────────────────── */
+
+.page-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  border: var(--border-thin);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface-container) 42%, var(--surface-raised));
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.page-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.page-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ─── PAGE FOOTER ─────────────────────────────────────────────── */
+
+.page-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* ─── SPLIT STAGE (main content + narrow side panel) ─────────── */
+
+.stage-split {
+  display: grid;
+  gap: 12px;
+  min-height: 0;
+}
+
+.stage-split.side-220 {
+  grid-template-columns: 1fr 220px;
+}
+
+.stage-split.side-300 {
+  grid-template-columns: 300px 1fr;
+}
+
+.stage-primary {
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.stage-side {
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}

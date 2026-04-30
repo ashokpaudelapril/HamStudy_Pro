@@ -46,6 +46,7 @@ export function ExplanationPanel({
   const [userMnemonic, setUserMnemonic] = useState<string | null>(null)
   const [generatingMnemonic, setGeneratingMnemonic] = useState(false)
   const [mnemonicError, setMnemonicError] = useState<string | null>(null)
+  const [expanded, setExpanded] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -54,6 +55,10 @@ export function ExplanationPanel({
     }).catch(() => {/* bridge not ready yet — stay null */})
     return () => { cancelled = true }
   }, [question.id])
+
+  useEffect(() => {
+    setExpanded(false)
+  }, [question.id, submitted])
 
   const handleGenerateMnemonic = useCallback(async () => {
     setGeneratingMnemonic(true)
@@ -105,92 +110,109 @@ export function ExplanationPanel({
   // FIX APPLIED: Move the notice below the header as its own full-width row so title and
   //              notice each get their full width.
   return (
-    <section className="panel explanation-panel" aria-label="Explanation panel">
-      <header className="explanation-header">
-        <p className="mode-eyebrow">Review Support</p>
-        <h3>Explanation Panel</h3>
-      </header>
-      {!hasAuthoredExplanation || !hasAuthoredMnemonic || !hasHint ? (
-        <p className="explanation-fallback-notice">
-          Detailed explanation pack not loaded for this question — showing offline fallback guidance.
-        </p>
-      ) : null}
-
-      <div className="explanation-status-row">
-        <div className="explanation-status-pill">
-          <span className="explanation-status-label">State</span>
-          <strong>{reviewStateLabel}</strong>
+    <section className="panel diagnostic-log-panel" aria-label="Explanation panel">
+      <header className="log-header explanation-header">
+        <div className="explanation-header-copy">
+          <span className="mode-eyebrow mono-data">Review</span>
+          <strong>{selectedIndex === question.correctIndex ? 'Why this answer is correct' : 'Review this miss'}</strong>
         </div>
-        <div className="explanation-status-pill">
-          <span className="explanation-status-label">Correct Choice</span>
-          <strong>
-            {correctLabel}. {correctAnswerText}
-          </strong>
+        <button type="button" className="ghost-btn" onClick={() => setExpanded((prev) => !prev)}>
+          {expanded ? 'Hide Review' : 'Show Review'}
+        </button>
+      </header>
+
+      <div className="log-data-stream explanation-summary-bar">
+        <div className="data-row">
+          <span className="data-key mono-data">Result</span>
+          <span className={`data-value mono-data ${selectedIndex === question.correctIndex ? 'text-good' : 'text-warn'}`}>
+            {reviewStateLabel}
+          </span>
+        </div>
+        <div className="data-row">
+          <span className="data-key mono-data">Correct</span>
+          <span className="data-value mono-data">{correctLabel}</span>
         </div>
         {selectedLabel ? (
-          <div className="explanation-status-pill">
-            <span className="explanation-status-label">Your Choice</span>
-            <strong>
-              {selectedLabel}. {question.answers[selectedIndex ?? question.correctIndex]}
-            </strong>
+          <div className="data-row">
+            <span className="data-key mono-data">Yours</span>
+            <span className={`data-value mono-data ${selectedIndex === question.correctIndex ? 'text-good' : 'text-bad'}`}>
+              {selectedLabel}
+            </span>
           </div>
         ) : null}
       </div>
 
-      <div className="explanation-panel-grid">
-        <article className="explanation-item">
-          <h4>Why Correct</h4>
-          <p>{whyCorrect}</p>
-          {hasHint ? <p className="meta">Hint already on file: {question.hint}</p> : null}
-        </article>
-
-        <article className="explanation-item">
-          <h4>Why Other Choices Miss</h4>
-          <div className="distractor-note-grid">
-            {distractorNotes.map((item) => (
-              <div key={`${question.id}-${item.choiceLabel}`} className="distractor-note-card">
-                <strong>{item.choiceLabel}</strong>
-                <p>{item.note}</p>
-              </div>
-            ))}
-          </div>
-          <p className="meta">{correctionNudge}</p>
-        </article>
-
-        <article className="explanation-item">
-          <h4>Mnemonic and Recall</h4>
-          {userMnemonic ? (
-            <p className="user-mnemonic">{userMnemonic}</p>
-          ) : (
-            <p>{mnemonic}</p>
-          )}
-          {hasAiProvider && (
-            <div className="mnemonic-actions">
-              <button
-                className="mnemonic-generate-btn"
-                onClick={handleGenerateMnemonic}
-                disabled={generatingMnemonic}
-              >
-                {generatingMnemonic
-                  ? 'Generating…'
-                  : userMnemonic
-                    ? 'Regenerate custom mnemonic'
-                    : 'Generate custom mnemonic'}
-              </button>
-              {mnemonicError && <p className="mnemonic-error">{mnemonicError}</p>}
+      {expanded ? (
+        <>
+          {!hasAuthoredExplanation || !hasAuthoredMnemonic || !hasHint ? (
+            <div className="log-alert warn mono-data">
+              &gt; FALLBACK_DATA_ACTIVE
             </div>
-          )}
-          {!userMnemonic && (
-            <p className="meta">Tie the topic label to the concept first, then recall the exact answer wording.</p>
-          )}
-        </article>
+          ) : null}
 
-        <article className="explanation-item">
-          <h4>Reference Path</h4>
-          <p>{question.refs || 'No citation listed for this item.'}</p>
-          <p className="meta">Best review habit: say the rule or concept source out loud before moving to the next question.</p>
-        </article>
-      </div>
+          <div className="log-entries-container">
+            <div className="log-entry-block">
+              <div className="entry-head mono-data">&gt; WHY_IT_WORKS</div>
+              <div className="entry-body">
+                <p>{whyCorrect}</p>
+                {hasHint ? <p className="meta mono-data">HINT: {question.hint}</p> : null}
+              </div>
+            </div>
+
+            <div className="log-entry-block">
+              <div className="entry-head mono-data">&gt; WRONG_CHOICES</div>
+              <div className="entry-body">
+                <div className="distractor-log-grid">
+                  {distractorNotes.map((item) => (
+                    <div key={`${question.id}-${item.choiceLabel}`} className="distractor-row">
+                      <span className="distractor-id mono-data">[{item.choiceLabel}]</span>
+                      <p className="distractor-text">{item.note}</p>
+                    </div>
+                  ))}
+                </div>
+                <p className="meta mono-data">ADVISORY: {correctionNudge}</p>
+              </div>
+            </div>
+
+            <div className="log-entry-block">
+              <div className="entry-head mono-data">&gt; MEMORY_HOOK</div>
+              <div className="entry-body">
+                {userMnemonic ? (
+                  <p className="user-mnemonic-text mono-data">{userMnemonic}</p>
+                ) : (
+                  <p>{mnemonic}</p>
+                )}
+                {hasAiProvider && (
+                  <div className="log-actions">
+                    <button
+                      className="console-button-sm"
+                      onClick={handleGenerateMnemonic}
+                      disabled={generatingMnemonic}
+                    >
+                      {generatingMnemonic
+                        ? 'GENERATING...'
+                        : userMnemonic
+                          ? 'REGENERATE_CUSTOM_SIG'
+                          : 'GENERATE_AI_MNEMONIC'}
+                    </button>
+                    {mnemonicError && <p className="log-error mono-data">ERR: {mnemonicError}</p>}
+                  </div>
+                )}
+                {!userMnemonic && (
+                  <p className="meta mono-data">RECALL: Tie the topic label to the key concept.</p>
+                )}
+              </div>
+            </div>
+
+            <div className="log-entry-block">
+              <div className="entry-head mono-data">&gt; REFERENCE</div>
+              <div className="entry-body">
+                <p className="mono-data">{question.refs || 'N/A'}</p>
+              </div>
+            </div>
+          </div>
+        </>
+      ) : null}
     </section>
   )
 }

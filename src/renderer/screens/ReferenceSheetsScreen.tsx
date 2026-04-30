@@ -4,8 +4,7 @@
 
 import { type ReactElement, useMemo, useState } from 'react'
 import type { ExamTier } from '@shared/types'
-import { ScreenHeader } from '../components/ScreenHeader'
-import { StatPill } from '../components/StatPill'
+import { ModeBar } from '../components/ModeBar'
 
 type ReferenceSheetsScreenProps = {
   onBackToModes: () => void
@@ -817,23 +816,7 @@ export function ReferenceSheetsScreen({ onBackToModes }: ReferenceSheetsScreenPr
 
   return (
     <main className="app-shell">
-      <ScreenHeader
-        title="Reference Sheets"
-        subtitle="Offline study aids organized by license class"
-        actions={
-          <button type="button" className="ghost-btn" onClick={onBackToModes}>
-            Back to Modes
-          </button>
-        }
-        stats={
-          <>
-            <StatPill label="Tier" value={TIER_LABELS[activeTier]} />
-            <StatPill label="Sections" value={TIER_SECTIONS[activeTier].length} />
-            <StatPill label="Matches" value={filteredSections.length} />
-            <StatPill label="Active Section" value={activeSection ? activeSection.title : 'None'} />
-          </>
-        }
-      />
+      <ModeBar title="Reference Sheets" onBack={onBackToModes} />
 
       {/* License-class tab bar */}
       <section className="panel reference-tier-bar">

@@ -2,24 +2,20 @@ type StatPillProps = {
   label: string
   value: string | number
   icon?: string
+  color?: 'primary' | 'good' | 'warn' | 'bad' | 'info'
 }
 
-// TASK: Render a compact, consistent stat item across screen headers.
-// HOW CODE SOLVES: Standardizes label/value formatting while preserving
-//                  existing `stats-grid` layout semantics.
-//                  Uses aria-label for screen readers to read stat as "label: value".
-export function StatPill({ label, value, icon }: StatPillProps) {
+export function StatPill({ label, value, icon, color = 'primary' }: StatPillProps) {
   return (
-    <p aria-label={`${label}: ${value}`}>
-      {icon ? (
-        <span className="stat-icon" aria-hidden="true">
-          {icon}
-        </span>
-      ) : null}
-      <span className="stat-text-group">
-        <span className="stat-label">{label}</span>
-        <span className="stat-value" aria-hidden="false">{value}</span>
-      </span>
-    </p>
+    <div 
+      className={`stat-pill-technical ${color}`}
+      aria-label={`${label}: ${value}`}
+    >
+      <div className="stat-pill-label mono-data">{label}</div>
+      <div className="stat-pill-main">
+        {icon && <span className="stat-icon" aria-hidden="true">{icon}</span>}
+        <span className="stat-value mono-data">{value}</span>
+      </div>
+    </div>
   )
 }

@@ -84,6 +84,23 @@ hamstudy-pro/
 - Keep renderer code free of direct Node access
 - Treat `data/` as source content that is safe to ship with the app
 
+## UI Agent Notes
+
+For any AI agent doing UI/code work, start with these docs:
+
+- `DOCS/UI_THEME_GUIDE.md`
+- `DOCS/UI_REFACTOR_PLAN.md`
+- `DOCS/PROMPT_GEMINI_UI.md`
+- `DOCS/PROMPT_CODEX_UI.md`
+
+These files define the current product direction:
+
+- fixed-page SPA screens
+- larger readable typography
+- fewer unnecessary boxes
+- in-page tabs for secondary content
+- bright Google-inspired desktop-app styling
+
 ## Hints Workflow
 
 The project currently supports two hint-generation paths:

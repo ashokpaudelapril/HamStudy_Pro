@@ -16,8 +16,8 @@ import {
 } from 'recharts'
 import { ipcBridge, type ProgressStats } from '@shared/ipcBridge'
 import type { AccuracyHeatmapCell, DailyChallengeEvent, ProgressionTrendData, RecentAnswerActivity, TierProgressStats } from '@shared/types'
-import { ScreenHeader } from '../components/ScreenHeader'
-import { StatPill } from '../components/StatPill'
+import { ModeBar } from '../components/ModeBar'
+import { SectionTabs } from '../components/SectionTabs'
 import { calculateOverallReadiness, calculateTierReadiness } from '../utils/readiness'
 
 type AnalyticsScreenProps = {
@@ -225,6 +225,12 @@ function buildFocusRecommendation(
 // HOW CODE SOLVES: Reuses persisted answer activity + progress metrics to render
 //                  score-over-time and sub-element radar visualizations.
 export function AnalyticsScreen({ onBackToModes }: AnalyticsScreenProps) {
+  const TABS = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'trends', label: 'Trends' },
+    { id: 'calibration', label: 'Calibration' },
+  ] as const
+  const [activeTab, setActiveTab] = useState<(typeof TABS)[number]['id']>('overview')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedTier, setSelectedTier] = useState<AnalyticsTier>('all')
@@ -254,7 +260,6 @@ export function AnalyticsScreen({ onBackToModes }: AnalyticsScreenProps) {
   const isScopeLockedToAll = selectedTier === 'all'
   const effectiveMetricScope: MetricScope = isScopeLockedToAll ? 'all' : metricScope
   const dueForScope = effectiveMetricScope === 'all' ? totalDueToday : selectedTierDue
-  const dueScopeLabel = effectiveMetricScope === 'all' ? 'All Tiers' : `${selectedTier} tier`
   const tierLabel = selectedTier === 'all' ? 'All Tiers' : `${selectedTier[0].toUpperCase()}${selectedTier.slice(1)}`
   const scopeLabel = effectiveMetricScope === 'all' ? 'All Tiers' : 'Selected Tier'
   const showScopedDueCards = effectiveMetricScope === 'selected' && selectedTier !== 'all'
@@ -307,6 +312,9 @@ export function AnalyticsScreen({ onBackToModes }: AnalyticsScreenProps) {
           ).toFixed(2),
         )
       : 0
+  const visibleMilestones = levelMilestones.slice(-4).reverse()
+  const visibleRewards = rewardEvents.slice(0, 4)
+  const visibleHeatmap = useMemo(() => accuracyHeatmap.slice(0, 42), [accuracyHeatmap])
 
   const refreshAnalytics = useCallback(async (): Promise<void> => {
     setLoading(true)
@@ -371,98 +379,13 @@ export function AnalyticsScreen({ onBackToModes }: AnalyticsScreenProps) {
 
   return (
     <main className="app-shell">
-      <ScreenHeader
-        title="HamStudy Pro"
-        subtitle="Analytics"
-        actions={
-          <button type="button" className="ghost-btn" onClick={onBackToModes}>
-            Back to Modes
-          </button>
-        }
-        stats={
-          <>
-            <StatPill label="Readiness" value={`${readinessPct}%`} icon="🧭" />
-            <StatPill label="Answers Tracked" value={recentActivity.length} icon="📝" />
-            <StatPill label={`Due Today (${dueScopeLabel})`} value={dueForScope} icon="⏳" />
-            <StatPill label="All-time Accuracy" value={`${stats?.accuracyPct ?? 0}%`} icon="🎯" />
-          </>
-        }
-      />
+      <ModeBar title="Analytics" onBack={onBackToModes} />
 
-      <section className="panel dashboard-hero-panel">
-        <div className="analytics-hero-layout">
-          <div className="analytics-hero-copy">
-            <p className="mode-tagline">Track trend lines, expose weak topics, and calibrate exam readiness.</p>
-            <div className="analytics-hero-highlight">
-              <div className="analytics-hero-highlight-copy">
-                <span className="analytics-hero-kicker">Current Signal</span>
-                <h2>
-                  {leadTier && weakestTier
-                    ? `${formatTierName(leadTier.tier)} is leading while ${formatTierName(weakestTier.tier)} needs attention.`
-                    : 'Build your first analytics baseline.'}
-                </h2>
-                <p className="meta">
-                  {leadTier && weakestTier
-                    ? `Best current tier: ${formatTierName(leadTier.tier)} at ${leadTier.score}%. Biggest drag: ${formatTierName(weakestTier.tier)} at ${weakestTier.score}%.`
-                    : 'This analytics view turns answer history and due-queue data into a study signal you can actually act on.'}
-                </p>
-              </div>
-              <div className="analytics-hero-metrics">
-                <div className="analytics-hero-metric">
-                  <span>Best Tier</span>
-                  <strong>{leadTier ? formatTierName(leadTier.tier) : 'No data'}</strong>
-                  <small>{leadTier ? `${leadTier.score}% readiness` : 'Answer more questions to unlock this.'}</small>
-                </div>
-                <div className="analytics-hero-metric">
-                  <span>Challenge Rate</span>
-                  <strong>{challengeCompletionRate}%</strong>
-                  <small>Daily challenge completion across the selected window.</small>
-                </div>
-              </div>
-            </div>
+      <SectionTabs items={[...TABS]} activeId={activeTab} onChange={(id) => setActiveTab(id as any)} />
 
-            <div className="analytics-filter-chips">
-              <span className="analytics-filter-chip">Tier: {tierLabel}</span>
-              <span className="analytics-filter-chip">Window: {trendWindowDays} days</span>
-              <span className="analytics-filter-chip">Scope: {scopeLabel}</span>
-              <span className="analytics-filter-chip">Challenge completion: {challengeCompletionRate}%</span>
-            </div>
-          </div>
-
-          <aside className="analytics-readiness-panel">
-            <div className="analytics-readiness-header">
-              <div>
-                <span className="analytics-hero-kicker">Tier Readiness</span>
-                <h3>Quick calibration snapshot</h3>
-              </div>
-              <strong className="analytics-readiness-overall">{readinessPct}%</strong>
-            </div>
-            <div className="readiness-mini-chart" role="list" aria-label="Tier readiness mini chart">
-              {tierReadiness.map((row) => {
-                const isEmphasized = readinessEmphasisTier === row.tier
-                const band = resolveReadinessBand(row.score)
-
-                return (
-                  <div
-                    key={row.tier}
-                    role="listitem"
-                    className={`readiness-mini-row ${isEmphasized ? 'active' : ''}`}
-                    title={`${row.tier}: ${row.score}% readiness, ${row.confidencePct}% confidence`}
-                  >
-                    <span className="readiness-mini-label">{row.tier}</span>
-                    <div className="readiness-mini-track" aria-hidden="true">
-                      <span className={`readiness-mini-fill heatmap-${band}`} style={{ width: `${row.score}%` }} />
-                    </div>
-                    <span className="readiness-mini-value">{row.score}%</span>
-                  </div>
-                )
-              })}
-            </div>
-          </aside>
-        </div>
-
-        <div className="analytics-controls-panel">
-          <div className="session-controls-row analytics-controls-row">
+      {activeTab === 'overview' ? (
+        <div className="analytics-page analytics-page-overview">
+          <section className="analytics-control-strip">
             <label>
               <span className="analytics-control-label">Tier</span>
               <select value={selectedTier} onChange={(event) => setSelectedTier(event.target.value as AnalyticsTier)}>
@@ -474,10 +397,7 @@ export function AnalyticsScreen({ onBackToModes }: AnalyticsScreenProps) {
             </label>
             <label>
               <span className="analytics-control-label">Trend Window</span>
-              <select
-                value={trendWindowDays}
-                onChange={(event) => setTrendWindowDays(Number(event.target.value) as TrendWindowDays)}
-              >
+              <select value={trendWindowDays} onChange={(event) => setTrendWindowDays(Number(event.target.value) as TrendWindowDays)}>
                 <option value={14}>Last 14 days</option>
                 <option value={30}>Last 30 days</option>
                 <option value={60}>Last 60 days</option>
@@ -485,53 +405,148 @@ export function AnalyticsScreen({ onBackToModes }: AnalyticsScreenProps) {
             </label>
             <label>
               <span className="analytics-control-label">Metric Scope</span>
-              <select
-                value={effectiveMetricScope}
-                onChange={(event) => setMetricScope(event.target.value as MetricScope)}
-                disabled={isScopeLockedToAll}
-              >
+              <select value={effectiveMetricScope} onChange={(event) => setMetricScope(event.target.value as MetricScope)} disabled={isScopeLockedToAll}>
                 <option value="selected">Selected Tier</option>
                 <option value="all">All Tiers</option>
               </select>
             </label>
-          </div>
-          {isScopeLockedToAll ? (
-            <p className="analytics-lock-note">Metric scope is locked to All Tiers while Tier is set to All Tiers.</p>
-          ) : null}
+            <button type="button" className="primary-button analytics-refresh-btn" onClick={() => void refreshAnalytics()} disabled={loading}>
+              Refresh
+            </button>
+          </section>
+
+          <section className="analytics-summary-strip">
+            <article className="analytics-summary-card analytics-summary-card-wide">
+              <span className="analytics-hero-kicker">Current Signal</span>
+              <h2>
+                {leadTier && weakestTier
+                  ? `${formatTierName(leadTier.tier)} leads while ${formatTierName(weakestTier.tier)} needs work.`
+                  : 'Build your first analytics baseline.'}
+              </h2>
+              <p className="meta">
+                {leadTier && weakestTier
+                  ? `Best current tier: ${formatTierName(leadTier.tier)} at ${leadTier.score}%. Biggest drag: ${formatTierName(weakestTier.tier)} at ${weakestTier.score}%.`
+                  : 'Answer history, due queues, and progression trend all collect here.'}
+              </p>
+            </article>
+            <article className="analytics-summary-card">
+              <span className="dashboard-label">Readiness</span>
+              <strong>{readinessPct}%</strong>
+              <p className="meta">{scopeLabel}</p>
+            </article>
+            <article className="analytics-summary-card">
+              <span className="dashboard-label">Due Now</span>
+              <strong>{dueForScope}</strong>
+              <p className="meta">{showScopedDueCards ? tierLabel : 'All tiers'}</p>
+            </article>
+            <article className="analytics-summary-card">
+              <span className="dashboard-label">Coverage</span>
+              <strong>{stats?.uniqueQuestionsAnswered ?? 0}</strong>
+              <p className="meta">{stats?.totalAnswers ?? 0} tracked answers</p>
+            </article>
+            <article className="analytics-summary-card">
+              <span className="dashboard-label">Focus Next</span>
+              <strong>{focusRecommendation.label}</strong>
+              <p className="meta">{focusRecommendation.reason}</p>
+            </article>
+          </section>
+
+          <section className="analytics-overview-stage">
+            <article className="analytics-panel analytics-readiness-dense">
+              <div className="analytics-panel-header">
+                <div>
+                  <p className="mode-eyebrow mono-data">Readiness</p>
+                  <h3>Tier calibration</h3>
+                </div>
+                <span className="analytics-readiness-overall">{readinessPct}%</span>
+              </div>
+              <div className="readiness-mini-chart" role="list" aria-label="Tier readiness mini chart">
+                {tierReadiness.map((row) => {
+                  const isEmphasized = readinessEmphasisTier === row.tier
+                  const band = resolveReadinessBand(row.score)
+
+                  return (
+                    <div key={row.tier} role="listitem" className={`readiness-mini-row ${isEmphasized ? 'active' : ''}`}>
+                      <span className="readiness-mini-label">{row.tier}</span>
+                      <div className="readiness-mini-track" aria-hidden="true">
+                        <span className={`readiness-mini-fill heatmap-${band}`} style={{ width: `${row.score}%` }} />
+                      </div>
+                      <span className="readiness-mini-value">{row.score}%</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </article>
+
+            <article className="analytics-panel analytics-event-panel">
+              <div className="analytics-panel-header">
+                <div>
+                  <p className="mode-eyebrow mono-data">Activity</p>
+                  <h3>Milestones and rewards</h3>
+                </div>
+              </div>
+              <div className="analytics-dual-list">
+                <div>
+                  <p className="dashboard-label">Levels</p>
+                  {visibleMilestones.length === 0 ? (
+                    <p className="meta">No level changes in this window yet.</p>
+                  ) : (
+                    <ul className="analytics-event-list compact">
+                      {visibleMilestones.map((milestone) => (
+                        <li key={`${milestone.date}-${milestone.levelTitle}`} className="analytics-event-item">
+                          <strong>{milestone.levelTitle}</strong>
+                          <span className="meta">{milestone.date}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                <div>
+                  <p className="dashboard-label">Rewards</p>
+                  {visibleRewards.length === 0 ? (
+                    <p className="meta">No reward events recorded yet.</p>
+                  ) : (
+                    <ul className="analytics-event-list compact">
+                      {visibleRewards.map((event) => (
+                        <li key={`${event.date}-${event.label}`} className="analytics-event-item">
+                          <strong>{event.date}</strong>
+                          <span className="meta">{event.label}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            </article>
+          </section>
+
+          {loading ? <p>Loading analytics...</p> : null}
+          {error ? <p className="error-text">{error}</p> : null}
         </div>
-      </section>
+      ) : null}
 
-      <section className="panel analytics-grid">
-        <article className="dashboard-card">
-          <p className="dashboard-label">Best Readiness Tier</p>
-          <p className="dashboard-value">{leadTier ? formatTierName(leadTier.tier) : 'No data'}</p>
-          <p className="meta">
-            {leadTier ? `${leadTier.score}% readiness · ${leadTier.confidencePct}% confidence` : 'Answer more questions to calibrate readiness.'}
-          </p>
-        </article>
+      {activeTab === 'trends' ? (
+        <div className="analytics-page analytics-page-trends">
+          <section className="analytics-summary-strip analytics-summary-strip-compact">
+            <article className="analytics-summary-card">
+              <span className="dashboard-label">Best Tier</span>
+              <strong>{leadTier ? formatTierName(leadTier.tier) : 'No data'}</strong>
+              <p className="meta">{leadTier ? `${leadTier.score}% readiness` : 'No data yet'}</p>
+            </article>
+            <article className="analytics-summary-card">
+              <span className="dashboard-label">XP Momentum</span>
+              <strong>{xpTrendDelta > 0 ? `+${xpTrendDelta}` : xpTrendDelta}</strong>
+              <p className="meta">{latestTrendPoint ? `${latestTrendPoint.dailyXp} daily XP` : 'No trend yet'}</p>
+            </article>
+            <article className="analytics-summary-card">
+              <span className="dashboard-label">Challenge Rate</span>
+              <strong>{challengeCompletionRate}%</strong>
+              <p className="meta">{trendWindowDays}-day window</p>
+            </article>
+          </section>
 
-        <article className="dashboard-card">
-          <p className="dashboard-label">Focus Next</p>
-          <p className="dashboard-value">{focusRecommendation.label}</p>
-          <p className="meta">{focusRecommendation.reason}</p>
-        </article>
-
-        <article className="dashboard-card">
-          <p className="dashboard-label">XP Momentum</p>
-          <p className="dashboard-value">
-            {xpTrendDelta > 0 ? '+' : ''}
-            {xpTrendDelta}
-          </p>
-          <p className="meta">
-            {latestTrendPoint
-              ? `${latestTrendPoint.dailyXp} daily XP on the latest learning day · streak ${latestTrendPoint.streakDays}`
-              : 'No progression trend yet.'}
-          </p>
-        </article>
-      </section>
-
-      <section className="panel analytics-grid">
-        <article className="analytics-card">
+          <section className="analytics-trends-stage">
+            <article className="analytics-panel analytics-chart-panel">
           <p className="dashboard-label">Score Over Time ({trendWindowDays}-Day Window)</p>
           {scoreTrend.every((point) => point.attempts === 0) ? (
             <p className="meta">No daily answer history yet. Complete a few sessions and trend lines will appear.</p>
@@ -564,7 +579,7 @@ export function AnalyticsScreen({ onBackToModes }: AnalyticsScreenProps) {
           )}
         </article>
 
-        <article className="analytics-card">
+        <article className="analytics-panel analytics-chart-panel">
           <p className="dashboard-label">Topic Radar (Most Attempted)</p>
           {radarData.length === 0 ? (
             <p className="meta">No topic history yet. Answer questions to map your performance profile.</p>
@@ -581,10 +596,14 @@ export function AnalyticsScreen({ onBackToModes }: AnalyticsScreenProps) {
             </div>
           )}
         </article>
-      </section>
+          </section>
+        </div>
+      ) : null}
 
-      <section className="panel analytics-grid">
-        <article className="analytics-card">
+      {activeTab === 'calibration' ? (
+        <div className="analytics-page analytics-page-calibration">
+      <section className="analytics-calibration-stage">
+        <article className="analytics-panel analytics-calibration-list">
           <p className="dashboard-label">Readiness Calibration</p>
           <p className="meta">Calibrated by tier with confidence damping for low-attempt histories.</p>
           {tierReadiness.length === 0 ? (
@@ -606,7 +625,7 @@ export function AnalyticsScreen({ onBackToModes }: AnalyticsScreenProps) {
           )}
         </article>
 
-        <article className="dashboard-card">
+        <article className="analytics-panel analytics-scope-summary">
           <p className="dashboard-label">Active Scope Readiness</p>
           <p className="dashboard-value">{readinessPct}%</p>
           <p className="meta">Tier: {formatTierName(selectedTier)}</p>
@@ -615,9 +634,9 @@ export function AnalyticsScreen({ onBackToModes }: AnalyticsScreenProps) {
         </article>
       </section>
 
-      <section className="panel">
+      <section className="analytics-panel analytics-heatmap-panel">
         <p className="dashboard-label">Accuracy Heatmap by Group</p>
-        <p className="meta">Grouped by topic and question group. Lower-accuracy cells surface first.</p>
+        <p className="meta">Top problem groups only, capped to keep this screen fixed.</p>
 
         <div className="heatmap-legend">
           <span className="heatmap-dot heatmap-unseen">Unseen</span>
@@ -627,11 +646,11 @@ export function AnalyticsScreen({ onBackToModes }: AnalyticsScreenProps) {
           <span className="heatmap-dot heatmap-mastered">85%+</span>
         </div>
 
-        {accuracyHeatmap.length === 0 ? (
+        {visibleHeatmap.length === 0 ? (
           <p className="meta">No heatmap cells available yet for this tier/filter combination.</p>
         ) : (
           <div className="accuracy-heatmap-grid" role="list" aria-label="Accuracy heatmap by group">
-            {accuracyHeatmap.map((cell) => {
+            {visibleHeatmap.map((cell) => {
               const band = resolveHeatmapBand(cell)
               return (
                 <div
@@ -649,94 +668,8 @@ export function AnalyticsScreen({ onBackToModes }: AnalyticsScreenProps) {
           </div>
         )}
       </section>
-
-      <section className="panel analytics-grid">
-        {showScopedDueCards ? (
-          <article className="dashboard-card">
-            <p className="dashboard-label">{tierLabel} Due</p>
-            <p className="dashboard-value">{selectedTierDue}</p>
-            <p className="meta">Queue pressure for active tier scope</p>
-          </article>
-        ) : (
-          <>
-            <article className="dashboard-card">
-              <p className="dashboard-label">Technician Due</p>
-              <p className="dashboard-value">{dueByTier.technician}</p>
-              <p className="meta">Element 2 queue pressure</p>
-            </article>
-
-            <article className="dashboard-card">
-              <p className="dashboard-label">General Due</p>
-              <p className="dashboard-value">{dueByTier.general}</p>
-              <p className="meta">Element 3 queue pressure</p>
-            </article>
-
-            <article className="dashboard-card">
-              <p className="dashboard-label">Extra Due</p>
-              <p className="dashboard-value">{dueByTier.extra}</p>
-              <p className="meta">Element 4 queue pressure</p>
-            </article>
-          </>
-        )}
-
-        <article className="dashboard-card">
-          <p className="dashboard-label">Unique Questions Seen</p>
-          <p className="dashboard-value">{stats?.uniqueQuestionsAnswered ?? 0}</p>
-          <p className="meta">
-            Coverage out of 1,440 questions · {stats?.totalAnswers ?? 0} total tracked answers
-          </p>
-        </article>
-      </section>
-
-      <section className="panel analytics-grid">
-        <article className="analytics-card">
-          <p className="dashboard-label">Recent Level Milestones</p>
-          {levelMilestones.length === 0 ? (
-            <p className="meta">No level transitions in this trend window yet.</p>
-          ) : (
-            <ul className="analytics-event-list">
-              {levelMilestones
-                .slice(-6)
-                .reverse()
-                .map((milestone) => (
-                  <li key={`${milestone.date}-${milestone.levelTitle}`} className="analytics-event-item">
-                    <strong>{milestone.levelTitle}</strong>
-                    <span className="meta">Reached on {milestone.date}</span>
-                  </li>
-                ))}
-            </ul>
-          )}
-        </article>
-
-        <article className="analytics-card">
-          <p className="dashboard-label">Recent Reward Events</p>
-          {rewardEvents.length === 0 ? (
-            <p className="meta">No reward events recorded yet. Keep answering to unlock bonuses.</p>
-          ) : (
-            <ul className="analytics-event-list">
-              {rewardEvents.map((event) => (
-                <li key={`${event.date}-${event.label}`} className="analytics-event-item">
-                  <strong>{event.date}</strong>
-                  <span className="meta">{event.label}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </article>
-      </section>
-
-      <section className="panel">
-        {loading ? <p>Loading analytics...</p> : null}
-        {error ? <p className="error-text">{error}</p> : null}
-
-        {!loading && !error ? (
-          <div className="action-row">
-            <button type="button" onClick={() => void refreshAnalytics()}>
-              Refresh Analytics
-            </button>
-          </div>
-        ) : null}
-      </section>
+      </div>
+      ) : null}
     </main>
   )
 }

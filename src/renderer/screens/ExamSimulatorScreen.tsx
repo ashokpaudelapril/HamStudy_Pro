@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ipcBridge } from '@shared/ipcBridge'
 import type { ExamTier, Question } from '@shared/types'
+import { ModeBar } from '../components/ModeBar'
 import { QuestionCard } from '../components/QuestionCard'
-import { ScreenHeader } from '../components/ScreenHeader'
-import { StatPill } from '../components/StatPill'
 
 type ExamSimulatorScreenProps = {
   onBackToModes: () => void
@@ -36,12 +35,6 @@ function getExamConfig(tier: ExamTier): { questionCount: number; durationSeconds
     return { questionCount: 50, durationSeconds: 37 * 60 }
   }
   return { questionCount: 35, durationSeconds: 26 * 60 }
-}
-
-function formatTierLabel(value: ExamTier): string {
-  if (value === 'technician') return 'Technician'
-  if (value === 'general') return 'General'
-  return 'Extra'
 }
 
 function formatCountdown(totalSeconds: number): string {
@@ -504,28 +497,9 @@ export function ExamSimulatorScreen({
 
   return (
     <main className="app-shell">
-      <ScreenHeader
-        title="HamStudy Pro"
-        subtitle="Full Exam Simulator"
-        actions={
-          <button
-            type="button"
-            className="ghost-btn"
-            onClick={handleBackToModes}
-          >
-            Back to Modes
-          </button>
-        }
-        stats={
-          <>
-            <StatPill label="Tier" value={formatTierLabel(tier)} icon="📚" />
-            <StatPill label="Questions" value={examConfig.questionCount} icon="🧾" />
-            <StatPill label="Timer" value={formatCountdown(remainingSeconds || examConfig.durationSeconds)} icon="⏱️" />
-            <StatPill label="Score" value={phase === 'finished' ? `${scorePct}%` : 'Pending'} icon="🎯" />
-          </>
-        }
-      />
+      <ModeBar title="Full Exam Simulator" onBack={handleBackToModes} />
 
+      <div className="app-shell-scroll">
       {phase === 'config' ? (
         <section className="panel mode-config-panel exam-config-panel">
           <div className="mode-config-card">
@@ -911,6 +885,7 @@ export function ExamSimulatorScreen({
           </div>
         </section>
       ) : null}
+      </div>
     </main>
   )
 }

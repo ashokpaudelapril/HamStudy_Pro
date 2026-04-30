@@ -1,0 +1,128 @@
+@media (max-width: 980px) {
+  .workspace-header {
+    flex-wrap: wrap;
+    height: auto;
+    padding: var(--space-2xs) var(--space-sm);
+  }
+
+  .launcher-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .launcher-title {
+    max-width: 16ch;
+  }
+
+  .dashboard-bento-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-columns,
+  .reference-layout,
+  .practice-main-flex,
+  .browser-panel,
+  .mastery-layout,
+  .analytics-hero-layout,
+  .analytics-hero-highlight,
+  .message-input {
+    grid-template-columns: 1fr;
+  }
+
+  .reference-tier-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-controls-row {
+    grid-template-columns: 1fr;
+  }
+
+  .api-key-row {
+    grid-template-columns: 1fr;
+  }
+
+  .question-actions-row,
+  .settings-actions,
+  .action-row,
+  .search-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-row .meta {
+    min-width: 0;
+  }
+
+  .header-left,
+  .header-center,
+  .header-right {
+    width: 100%;
+  }
+
+  .header-center {
+    justify-content: flex-start;
+    order: 3;
+  }
+
+  .search-pill-sm {
+    width: 100%;
+  }
+}
+
+@media (max-width: 760px) {
+  .navigation-rail {
+    width: 68px;
+  }
+
+  .workspace-content {
+    margin: var(--space-2xs);
+    margin-left: 0;
+  }
+
+  .rail-item {
+    width: 56px;
+    min-height: 52px;
+  }
+
+  .launcher-console,
+  .dashboard-console-fixed,
+  .dashboard-console-grid,
+  .app-shell {
+    padding: var(--space-sm);
+  }
+
+  .launcher-title {
+    font-size: 1.8rem;
+  }
+
+  .stats-grid,
+  .screen-header-stats,
+  .settings-overview,
+  .settings-ai-summary,
+  .settings-reset-summary,
+  .question-session-overview-row,
+  .reference-group-grid,
+  .formula-example-grid,
+  .unit-card-grid,
+  .alphabet-card-grid,
+  .analytics-grid,
+  .mastery-legend,
+  .achievements-summary-panel,
+  .achievements-focus-panel,
+  .badge-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .top-bar.screen-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .screen-header-actions {
+    justify-content: flex-start;
+  }
+
+  .window-title,
+  .user-indicator span {
+    display: none;
+  }
+}

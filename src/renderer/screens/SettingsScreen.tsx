@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ipcBridge, type ResetAppDataResult } from '@shared/ipcBridge'
 import type { UserSettings, VoiceDiagnostics, AiProvider, ApiKeyStatus } from '@shared/types'
-import { ScreenHeader } from '../components/ScreenHeader'
-import { StatPill } from '../components/StatPill'
+import { ModeBar } from '../components/ModeBar'
+import { SectionTabs } from '../components/SectionTabs'
 
 type SettingsScreenProps = {
   onBackToModes: () => void
@@ -49,6 +49,12 @@ function applyVisualSettings(nextSettings: UserSettings): void {
 // HOW CODE SOLVES: Loads/saves UserSettings via IPC and exposes an explicit
 //                  full reset action that clears user-generated app state.
 export function SettingsScreen({ onBackToModes }: SettingsScreenProps) {
+  const TABS = [
+    { id: 'preferences', label: 'Preferences' },
+    { id: 'ai', label: 'AI & APIs' },
+    { id: 'system', label: 'System & Reset' },
+  ] as const
+  const [activeTab, setActiveTab] = useState<(typeof TABS)[number]['id']>('preferences')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [resetting, setResetting] = useState(false)
@@ -296,39 +302,14 @@ export function SettingsScreen({ onBackToModes }: SettingsScreenProps) {
   // duplicated the form values). Save/Reset promoted to a dedicated actions footer row.
   return (
     <main className="app-shell">
-      <ScreenHeader
-        title="HamStudy Pro"
-        subtitle="Settings"
-        actions={
-          <button type="button" className="ghost-btn" onClick={onBackToModes}>
-            Back to Modes
-          </button>
-        }
-        stats={
-          settings ? (
-            <>
-              <StatPill
-                label="Theme"
-                value={settings.theme === 'system' ? 'System' : settings.theme === 'dark' ? 'Dark' : 'Light'}
-                icon="🎨"
-              />
-              <StatPill label="Daily Goal" value={`${settings.dailyGoalMinutes} min`} icon="🗓️" />
-              <StatPill label="AI Provider" value={settings.aiProvider ? settings.aiProvider : 'None'} icon="🤖" />
-              <StatPill label="Voice Rate" value={`${settings.voiceRate.toFixed(1)}x`} icon="🔊" />
-            </>
-          ) : (
-            <>
-              <StatPill label="Theme" value="Loading…" icon="🎨" />
-              <StatPill label="Daily Goal" value="Loading…" icon="🗓️" />
-              <StatPill label="AI Provider" value="Loading…" icon="🤖" />
-              <StatPill label="Voice Rate" value="Loading…" icon="🔊" />
-            </>
-          )
-        }
-      />
+      <ModeBar title="Settings" onBack={onBackToModes} />
 
-      <section className="panel">
-        {loading ? <p>Loading settings…</p> : null}
+      <SectionTabs items={[...TABS]} activeId={activeTab} onChange={(id) => setActiveTab(id as any)} />
+
+      {activeTab === 'preferences' ? (
+        <div className="app-shell-scroll">
+          <section className="panel">
+            {loading ? <p>Loading settings…</p> : null}
         {error ? <p className="error-text">{error}</p> : null}
         {saveMessage ? <p className="feedback-text">{saveMessage}</p> : null}
 
@@ -477,7 +458,11 @@ export function SettingsScreen({ onBackToModes }: SettingsScreenProps) {
           </>
         ) : null}
       </section>
+      </div>
+      ) : null}
 
+      {activeTab === 'ai' ? (
+        <div className="app-shell-scroll">
       <section className="panel">
         <h4 className="settings-group-title">AI &amp; API Keys</h4>
         <div className="mode-config-copy">
@@ -560,7 +545,11 @@ export function SettingsScreen({ onBackToModes }: SettingsScreenProps) {
           })}
         </div>
       </section>
+      </div>
+      ) : null}
 
+      {activeTab === 'system' ? (
+        <div className="app-shell-scroll">
       <section className="panel settings-danger-panel">
         <p className="mode-tagline">Danger Zone</p>
         <p className="meta">
@@ -658,6 +647,8 @@ export function SettingsScreen({ onBackToModes }: SettingsScreenProps) {
           <p>Loading voice diagnostics...</p>
         )}
       </section>
+      </div>
+      ) : null}
     </main>
   )
 }

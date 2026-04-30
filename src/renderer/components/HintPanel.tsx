@@ -64,7 +64,7 @@ export function HintPanel({ question, title = 'Question Help' }: HintPanelProps)
         <div className="hint-panel-actions">
           {hintLevel > 0 ? (
             <button type="button" className="ghost-btn" onClick={() => setHintLevel(0)}>
-              Hide Hints
+              Hide
             </button>
           ) : null}
           <button
@@ -72,13 +72,13 @@ export function HintPanel({ question, title = 'Question Help' }: HintPanelProps)
             className="ghost-btn"
             onClick={() => setHintLevel((prev) => Math.min(prev + 1, hintStages.length))}
           >
-            {hintLevel === 0 ? 'Reveal Hint' : hintLevel < hintStages.length ? 'Need More Help' : 'Hints Maxed'}
+            {hintLevel === 0 ? 'Show Hint' : hintLevel < hintStages.length ? 'More Help' : 'Maxed'}
           </button>
         </div>
       </header>
 
       {hintLevel === 0 ? (
-        <p className="meta">Hints stay hidden by default so your first pass remains a real attempt. Reveal one stage at a time when you want more guidance.</p>
+        <p className="meta">Hints stay hidden until you need them.</p>
       ) : (
         <div className="hint-stage-list">
           {hintStages.slice(0, hintLevel).map((hintText, index) => (
@@ -88,7 +88,7 @@ export function HintPanel({ question, title = 'Question Help' }: HintPanelProps)
             </article>
           ))}
           {!hasAuthoredHint ? (
-            <p className="meta">Showing staged offline fallback hints because this question has no authored hint field yet.</p>
+            <p className="meta">Using offline fallback hints for this question.</p>
           ) : null}
         </div>
       )}

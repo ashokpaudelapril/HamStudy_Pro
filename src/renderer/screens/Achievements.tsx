@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { ipcBridge } from '@shared/ipcBridge'
 import type { EarnedBadge } from '@shared/types'
 import { AchievementBadge } from '../components/AchievementBadge'
-import { ScreenHeader } from '../components/ScreenHeader'
-import { StatPill } from '../components/StatPill'
+import { ModeBar } from '../components/ModeBar'
+import { SectionTabs } from '../components/SectionTabs'
 import {
   type AchievementFilter,
   filterBadges,
@@ -16,6 +16,11 @@ import {
 // HOW CODE SOLVES: Fetches the full badge list (with unlock state) via IPC on mount
 //                  and maps each entry to an AchievementBadge cell in a CSS grid layout.
 export function AchievementsScreen({ onBackToModes }: { onBackToModes: () => void }) {
+  const TABS = [
+    { id: 'summary', label: 'Summary' },
+    { id: 'wall', label: 'Badge Wall' },
+  ] as const
+  const [activeTab, setActiveTab] = useState<(typeof TABS)[number]['id']>('summary')
   const [badges, setBadges] = useState<EarnedBadge[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -64,23 +69,12 @@ export function AchievementsScreen({ onBackToModes }: { onBackToModes: () => voi
 
   return (
     <main className="app-shell">
-      <ScreenHeader
-        title="HamStudy Pro"
-        subtitle={loading ? 'Achievements' : `Achievements • ${unlockedCount} / ${badges.length} earned`}
-        actions={
-          <button type="button" className="ghost-btn" onClick={onBackToModes}>
-            Back to Modes
-          </button>
-        }
-        stats={
-          <>
-            <StatPill label="Unlocked" value={unlockedCount} icon="🏆" />
-            <StatPill label="Locked" value={lockedCount} icon="🔒" />
-            <StatPill label="Completion" value={`${completionPct}%`} icon="📈" />
-          </>
-        }
-      />
+      <ModeBar title="Achievements" onBack={onBackToModes} />
 
+      <SectionTabs items={[...TABS]} activeId={activeTab} onChange={(id) => setActiveTab(id as any)} />
+
+      {activeTab === 'summary' ? (
+        <div className="app-shell-scroll">
       <section className="panel achievements-summary-panel">
         <div className="achievement-summary-card">
           <span className="achievement-summary-label">Unlocked</span>
@@ -150,7 +144,11 @@ export function AchievementsScreen({ onBackToModes }: { onBackToModes: () => voi
           )}
         </article>
       </section>
+      </div>
+      ) : null}
 
+      {activeTab === 'wall' ? (
+        <div className="app-shell-scroll">
       <section className="panel">
         {error ? <p className="error-text">{error}</p> : null}
         {loading ? (
@@ -207,6 +205,8 @@ export function AchievementsScreen({ onBackToModes }: { onBackToModes: () => voi
           </>
         )}
       </section>
+      </div>
+      ) : null}
     </main>
   )
 }

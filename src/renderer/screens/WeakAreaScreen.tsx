@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ipcBridge, type ProgressStats } from '@shared/ipcBridge'
+import { ipcBridge } from '@shared/ipcBridge'
 import type { ExamTier, Question } from '@shared/types'
+import { ModeBar } from '../components/ModeBar'
 import { QuestionCard } from '../components/QuestionCard'
-import { ScreenHeader } from '../components/ScreenHeader'
-import { StatPill } from '../components/StatPill'
+import { SectionTabs } from '../components/SectionTabs'
 import { useSRS } from '../hooks/useSRS'
 
 type WeakAreaScreenProps = {
@@ -32,6 +32,11 @@ function shuffleArray<T>(arr: T[]): T[] {
 // HOW CODE SOLVES: Loads `questions:get-weak-area-pool`, persists answers,
 //                  and keeps both local drill metrics and global stats in sync.
 export function WeakAreaScreen({ onBackToModes, onAskAboutQuestion, onExplainDifferently }: WeakAreaScreenProps) {
+  const TABS = [
+    { id: 'setup', label: 'Setup' },
+    { id: 'practice', label: 'Practice Workspace' },
+  ] as const
+  const [activeTab, setActiveTab] = useState<(typeof TABS)[number]['id']>('setup')
   const [tier, setTier] = useState<ExamTier>('technician')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -42,7 +47,6 @@ export function WeakAreaScreen({ onBackToModes, onAskAboutQuestion, onExplainDif
   const [startedAt, setStartedAt] = useState<number>(0)
   const [isSrsBridgeAvailable, setIsSrsBridgeAvailable] = useState(true)
   const [localStats, setLocalStats] = useState<LocalWeakStats>({ attempted: 0, correct: 0 })
-  const [globalStats, setGlobalStats] = useState<ProgressStats | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [sessionId, setSessionId] = useState(() => `weak-area-${Date.now()}`)
   const [poolComplete, setPoolComplete] = useState(false)
@@ -90,13 +94,6 @@ export function WeakAreaScreen({ onBackToModes, onAskAboutQuestion, onExplainDif
     return `${weakSubElements.length} weak sub-elements are currently included in this drill.`
   }, [weakSubElements])
 
-  // TASK: Refresh shared aggregate progress for cross-mode consistency.
-  // HOW CODE SOLVES: Pulls persisted totals from progress IPC endpoint.
-  const refreshGlobalStats = useCallback(async (): Promise<void> => {
-    const next = await ipcBridge.getProgressStats()
-    setGlobalStats(next)
-  }, [])
-
   // TASK: Load weak-area prioritized pool from backend ranking query.
   // HOW CODE SOLVES: Requests pre-ranked questions from main DB logic and initializes local drill state.
   const loadWeakAreaPool = useCallback(async (): Promise<void> => {
@@ -118,6 +115,7 @@ export function WeakAreaScreen({ onBackToModes, onAskAboutQuestion, onExplainDif
     setStartedAt(Date.now())
     setPoolComplete(false)
     setLoading(false)
+    setActiveTab('practice')
   }, [tier])
 
   // TASK: Persist weak-area answer attempt and update drill metrics.
@@ -160,7 +158,6 @@ export function WeakAreaScreen({ onBackToModes, onAskAboutQuestion, onExplainDif
           setIsSrsBridgeAvailable(false)
         }
 
-        await refreshGlobalStats()
       })
       .catch((err: unknown) => {
         const details = err instanceof Error ? err.message : String(err)
@@ -201,14 +198,13 @@ export function WeakAreaScreen({ onBackToModes, onAskAboutQuestion, onExplainDif
     setIndex(0)
     setQuestions((prev) => shuffleArray(prev))
     setError(null)
+    setActiveTab('practice')
   }
-
-  const accuracy = localStats.attempted > 0 ? Number(((localStats.correct / localStats.attempted) * 100).toFixed(2)) : 0
 
   useEffect(() => {
     void (async () => {
       try {
-        await Promise.all([loadWeakAreaPool(), refreshGlobalStats()])
+        await Promise.all([loadWeakAreaPool()])
       } catch (err: unknown) {
         const details = err instanceof Error ? err.message : String(err)
         if (details.includes('IPC bridge is not available')) {
@@ -219,28 +215,18 @@ export function WeakAreaScreen({ onBackToModes, onAskAboutQuestion, onExplainDif
         setLoading(false)
       }
     })()
-  }, [loadWeakAreaPool, refreshGlobalStats])
+  }, [loadWeakAreaPool])
+
+  const accuracy = localStats.attempted > 0 ? Number(((localStats.correct / localStats.attempted) * 100).toFixed(2)) : 0
 
   return (
     <main className="app-shell">
-      <ScreenHeader
-        title="HamStudy Pro"
-        subtitle={`${formatTierLabel(tier)} Weak Areas`}
-        actions={
-          <button type="button" className="ghost-btn" onClick={onBackToModes}>
-            Back to Modes
-          </button>
-        }
-        stats={
-          <>
-            <StatPill label="Drill Attempted" value={localStats.attempted} />
-            <StatPill label="Drill Accuracy" value={`${accuracy}%`} />
-            <StatPill label="Global Answers" value={globalStats?.totalAnswers ?? 0} />
-            <StatPill label="Global Accuracy" value={`${globalStats?.accuracyPct ?? 0}%`} />
-          </>
-        }
-      />
+      <ModeBar title={`${formatTierLabel(tier)} Weak Areas`} onBack={onBackToModes} />
 
+      <SectionTabs items={[...TABS]} activeId={activeTab} onChange={(id) => setActiveTab(id as any)} />
+
+      {activeTab === 'setup' ? (
+        <div className="app-shell-scroll">
       <section className="panel mode-config-panel">
         <div className="mode-config-card">
           <span className="mode-config-label">Tier</span>
@@ -283,7 +269,11 @@ export function WeakAreaScreen({ onBackToModes, onAskAboutQuestion, onExplainDif
           </div>
         </div>
       </section>
+      </div>
+      ) : null}
 
+      {activeTab === 'practice' ? (
+        <div className="app-shell-fixed">
       {poolComplete ? (
         <section className="panel">
           <p className="mode-tagline">Drill complete — all {questions.length} questions answered.</p>
@@ -301,7 +291,7 @@ export function WeakAreaScreen({ onBackToModes, onAskAboutQuestion, onExplainDif
         </section>
       ) : null}
 
-      <section className="panel question-panel">
+      <section className="panel scroll-pane question-panel" style={{ flex: 1 }}>
         {loading ? <p>Loading weak-area questions...</p> : null}
         {error ? <p className="error-text">{error}</p> : null}
         {!isSrsBridgeAvailable ? <p className="meta">SRS updates unavailable in this run. Restart app to re-enable.</p> : null}
@@ -346,6 +336,8 @@ export function WeakAreaScreen({ onBackToModes, onAskAboutQuestion, onExplainDif
 
         {!loading && !error && !hasQuestion ? <p>No weak-area questions available yet.</p> : null}
       </section>
+      </div>
+      ) : null}
     </main>
   )
 }
